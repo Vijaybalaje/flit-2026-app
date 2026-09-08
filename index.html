@@ -907,6 +907,10 @@ OneSignalDeferred.push(async function(OneSignal){
 (async function(){
   await loadSchedule();
   boot();
+
+  setInterval(() => {
+    renderHome();
+  },60000);
 })();
   
 </script>
