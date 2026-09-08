@@ -686,7 +686,7 @@ async function loadHotelDetails() {
     }
 
     document.getElementById('hotelInfo').textContent =
-      `Room: ${hotel.roomNo} | Roommate: ${hotel.roommate || 'N/A'}`;
+      `Room: ${hotel.roomNo} | Sharing with ${hotel.roommate || 'N/A'}`;
     return hotel;
 
   }catch(e){
