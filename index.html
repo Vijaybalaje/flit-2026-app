@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FL!T 2026 — Conference App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- ===== ONE-TIME SETUP: paste your OneSignal App ID below, see SETUP_GUIDE.md ===== -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<style>
+  :root{
+    --bg: #101312;
+    --panel: #191E1C;
+    --panel-2: #1F2523;
+    --border: #2B322F;
+    --lime: #C9FF3D;
+    --lime-dim: #8FB82B;
+    --coral: #FF6B4A;
+    --text: #F3F6EF;
+    --muted: #8C978F;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif;}
+  #app{max-width:460px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative; background:var(--bg);}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; padding:18px 18px 14px; border-bottom:1px solid var(--border);}
+  .brand{display:flex; flex-direction:column; line-height:1.05;}
+  .brand .mark{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; letter-spacing:-0.02em;}
+  .brand .mark span{color:var(--lime);}
+  .brand .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  .persona-pick{display:flex; align-items:center; gap:8px;}
+  select#personaSelect{background:var(--panel-2); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:7px 10px; font-size:12px; font-family:'Inter',sans-serif;}
+
+  .content{flex:1; padding:16px 16px 90px; overflow-y:auto;}
+  .screen{display:none; animation:fade .18s ease;}
+  .screen.active{display:block;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  h1.page-title{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; letter-spacing:-0.01em; margin:2px 0 4px;}
+  p.page-sub{color:var(--muted); font-size:13px; margin:0 0 18px; line-height:1.5;}
+
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:12px;}
+  .card h3{margin:0 0 10px; font-size:14px; font-weight:600; font-family:'Space Grotesk',sans-serif;}
+  .card p{margin:0; font-size:13px; color:var(--muted); line-height:1.5;}
+  .row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .row + .row{margin-top:8px;}
+
+  .hero{background:linear-gradient(160deg,#1B2118,var(--panel) 60%); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:14px;}
+  .hero .eyebrow{color:var(--lime); font-size:12px; font-weight:600; margin-bottom:6px;}
+  .hero .big{font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; line-height:1.2; margin-bottom:8px;}
+  .hero .meta{font-size:13px; color:var(--muted);}
+
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; background:var(--lime); color:#0F1210; border:none; border-radius:10px; padding:11px 16px; font-weight:600; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif;}
+  .btn:active{transform:scale(.98);}
+  .btn.secondary{background:var(--panel-2); color:var(--text); border:1px solid var(--border);}
+  .btn.block{width:100%;}
+  .btn.danger{background:var(--coral); color:#1B0D08;}
+  .btn:disabled{opacity:.45; cursor:default;}
+  .btn.small{padding:7px 12px; font-size:12px;}
+
+  input,textarea,select.field{width:100%; background:var(--panel-2); border:1px solid var(--border); border-radius:10px; color:var(--text); padding:10px 12px; font-size:13px; font-family:'Inter',sans-serif; margin-bottom:10px;}
+  label{font-size:11.5px; color:var(--muted); display:block; margin-bottom:5px; margin-top:2px;}
+  textarea{resize:vertical; min-height:64px;}
+
+  .tag{display:inline-block; font-size:10.5px; padding:3px 8px; border-radius:100px; border:1px solid var(--border); color:var(--muted);}
+  .tag.ok{border-color:var(--lime-dim); color:var(--lime);}
+  .tag.warn{border-color:var(--coral); color:var(--coral);}
+
+  .session{border-bottom:1px solid var(--border); padding:12px 0;}
+  .session:last-child{border-bottom:none;}
+  .session .time{font-size:11px; color:var(--lime); font-weight:600; font-family:'Space Grotesk',sans-serif;}
+  .session .title{font-size:14px; font-weight:600; margin:3px 0 2px;}
+  .session .venue{font-size:12px; color:var(--muted);}
+  .day-tabs{display:flex; gap:8px; margin-bottom:14px;}
+  .day-tabs button{flex:1; padding:8px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--muted); font-size:12px; font-weight:600; cursor:pointer;}
+  .day-tabs button.active{background:var(--lime); color:#0F1210; border-color:var(--lime);}
+
+  .poll-opt{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer; position:relative; overflow:hidden;}
+  .poll-opt .fill{position:absolute; left:0; top:0; bottom:0; background:#2A3A18; z-index:0;}
+  .poll-opt .label{position:relative; z-index:1; display:flex; justify-content:space-between; font-size:13px;}
+  .poll-opt.voted{border-color:var(--lime-dim);}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .subnav{display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:2px;}
+  .subnav button{white-space:nowrap; padding:7px 12px; border-radius:100px; border:1px solid var(--border); background:transparent; color:var(--muted); font-size:12px; cursor:pointer;}
+  .subnav button.active{background:var(--panel-2); color:var(--text); border-color:var(--text);}
+
+  .wall-item{background:var(--panel-2); border-radius:10px; padding:10px; margin-bottom:8px;}
+  .wall-item .emoji{font-size:22px;}
+  .wall-item .cap{font-size:13px; margin:6px 0 4px;}
+  .wall-item .meta{font-size:11px; color:var(--muted);}
+
+  .sos-btn{width:100%; padding:22px; border-radius:16px; background:var(--coral); color:#20100B; border:none; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; cursor:pointer; margin-bottom:14px;}
+
+  .leaderboard-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border);}
+  .leaderboard-row:last-child{border-bottom:none;}
+  .lb-rank{width:22px; text-align:center; color:var(--muted); font-size:12px; font-weight:600;}
+  .lb-name{flex:1; font-size:13px;}
+  .lb-pts{font-size:13px; color:var(--lime); font-weight:600;}
+
+  .stat-card{background:var(--panel-2); border-radius:10px; padding:12px; text-align:left;}
+  .stat-card .n{font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700;}
+  .stat-card .l{font-size:11px; color:var(--muted); margin-top:2px;}
+
+  .tabbar{position:sticky; bottom:0; display:flex; background:var(--panel); border-top:1px solid var(--border); padding:8px 6px calc(8px + env(safe-area-inset-bottom)); max-width:460px; margin:0 auto; width:100%;}
+  .tabbar button{flex:1; background:none; border:none; color:var(--muted); font-size:10.5px; padding:6px 2px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; font-family:'Inter',sans-serif;}
+  .tabbar button .dot{width:6px; height:6px; border-radius:50%; background:transparent;}
+  .tabbar button.active{color:var(--text);}
+  .tabbar button.active .dot{background:var(--lime);}
+
+  .empty{color:var(--muted); font-size:12.5px; text-align:center; padding:20px 10px;}
+  ::selection{background:var(--lime); color:#0F1210;}
+  .toast{position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--lime); color:#0F1210; padding:10px 18px; border-radius:100px; font-size:12.5px; font-weight:600; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:50;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- FIRST-LAUNCH GATE: registration only, shown before anything else -->
+  <div id="gate" style="display:none; padding:20px 18px; min-height:100vh;">
+    <div class="brand" style="margin-bottom:18px;">
+      <div class="mark">FL<span>!</span>T <span>26</span></div>
+      <div class="sub">Elevate · Rise · Transform · Lead</div>
+    </div>
+    <h1 class="page-title">Welcome — let's get you registered</h1>
+    <p class="page-sub">This is a one-time step. Your details are saved and can't be edited after — if something's wrong, reach the help desk in the app once you're in.</p>
+    <div class="card">
+      <label>Name</label><input id="gName" placeholder="Full name">
+      <label>Email</label><input id="gEmail" placeholder="you@company.com">
+      <label>Contact number</label><input id="gContact" placeholder="+91...">
+      <label>Country</label><input id="gCountry" placeholder="India">
+      <label>Flight time</label><input id="gFlight" placeholder="e.g. 4 Nov, 10:40 AM">
+      <label>Dietary preference</label>
+      <select class="field" id="gDietary">
+        <option>No preference</option><option>Vegetarian</option><option>Vegan</option><option>Jain</option><option>Non-vegetarian</option><option>Other / allergy</option>
+      </select>
+      <label>Arrival details</label><input id="gArrival" placeholder="Date, mode, terminal">
+      <label>Departure details</label><input id="gDeparture" placeholder="Date, mode, terminal">
+      <button class="btn block" onclick="completeRegistration()">Register &amp; continue</button>
+      <p id="gateError" style="color:var(--coral); font-size:12px; margin-top:8px;"></p>
+    </div>
+    <p style="text-align:center; margin-top:16px;"><a href="#" onclick="organizerLogin(); return false;" style="color:var(--muted); font-size:12px;">Organizer login</a></p>
+  </div>
+
+  <div id="mainApp" style="display:none;">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">FL<span>!</span>T <span>26</span></div>
+      <div class="sub">Elevate · Rise · Transform · Lead</div>
+    </div>
+    <div class="persona-pick">
+      <span id="whoAmI" style="font-size:12px;color:var(--muted)"></span>
+      <button class="btn small secondary" id="orgLoginBtn" onclick="organizerLogin()" style="margin-left:6px;">Organizer</button>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+
+    <!-- HOME -->
+    <section class="screen" id="screen-home">
+      <div class="hero">
+        <div class="eyebrow">WHERE SHOULD I BE NOW?</div>
+        <div class="big" id="whereNowText">Loading…</div>
+        <div class="meta" id="whereNowMeta"></div>
+      </div>
+      <div class="card">
+        <h3>Your status</h3>
+        <div class="row"><span style="font-size:13px;color:var(--muted)">Engagement points</span><span id="homePoints" style="font-weight:600;color:var(--lime)">0</span></div>
+        <div class="row"><span style="font-size:13px;color:var(--muted)">Travel check-in</span><span id="homeTravel" class="tag">—</span></div>
+        <div class="row"><span style="font-size:13px;color:var(--muted)">Registration</span><span id="homeReg" class="tag">—</span></div>
+      </div>
+      <div class="card">
+        <h3>Notifications</h3>
+        <div id="homeNotifs"><div class="empty">No alerts yet.</div></div>
+      </div>
+    </section>
+
+    <!-- SCHEDULE -->
+    <section class="screen" id="screen-schedule">
+      <h1 class="page-title">Schedule</h1>
+      <p class="page-sub">Tap a session to check in. Times update live from the organizers.</p>
+      <div class="day-tabs" id="dayTabs"></div>
+      <div class="card" id="sessionList"></div>
+    </section>
+
+    <!-- TRAVEL & STAY -->
+    <section class="screen" id="screen-travel">
+      <h1 class="page-title">Travel &amp; Stay</h1>
+      <p class="page-sub">Your registration, pickup, and hotel details.</p>
+
+      <div class="subnav" id="travelSubnav">
+        <button data-t="reg" class="active">Registration</button>
+        <button data-t="ride">Travel</button>
+        <button data-t="hotel">Hotel</button>
+      </div>
+
+      <div id="travel-reg">
+        <div class="card">
+          <h3>Your registration</h3>
+          <p style="margin-bottom:10px;">Submitted once at first launch and locked. Need a correction? Raise it under Help.</p>
+          <div id="regSummary"></div>
+        </div>
+      </div>
+
+      <div id="travel-ride" style="display:none">
+        <div class="card">
+          <h3>Airport pickup</h3>
+          <p id="rideInfo">No pickup assigned yet — admin will allocate a vehicle before your arrival.</p>
+        </div>
+        <div class="card">
+          <h3>Confirm boarding</h3>
+          <p>Have you boarded your assigned vehicle for transfer?</p>
+          <div class="grid2" style="margin-top:10px">
+            <button class="btn" onclick="setTravelCheckin(true)">Yes, boarded</button>
+            <button class="btn secondary" onclick="setTravelCheckin(false)">Not yet</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Bus / transfer to Coorg</h3>
+          <p id="busInfo">Bus allocation will appear here once assigned.</p>
+        </div>
+      </div>
+
+      <div id="travel-hotel" style="display:none">
+        <div class="card">
+          <h3>Hotel details</h3>
+          <p id="hotelInfo">Room allocation pending — you'll see your room number and roommate here once assigned.</p>
+        </div>
+        <div class="card">
+          <h3>Hotel check-in</h3>
+          <div class="grid2">
+            <button class="btn" onclick="setHotelCheckin(true)">Checked in</button>
+            <button class="btn secondary" onclick="setHotelCheckin(false)">Not yet</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENGAGE -->
+    <section class="screen" id="screen-engage">
+      <h1 class="page-title">Engage</h1>
+      <p class="page-sub">Polls, questions, the memory wall, and the leaderboard.</p>
+
+      <div class="subnav" id="engageSubnav">
+        <button data-e="polls" class="active">Polls</button>
+        <button data-e="ask">Ask Leadership</button>
+        <button data-e="wall">Memory Wall</button>
+        <button data-e="board">Leaderboard</button>
+        <button data-e="survey">Survey</button>
+      </div>
+
+      <div id="engage-polls"></div>
+
+      <div id="engage-ask" style="display:none">
+        <div class="card">
+          <h3>Ask a question</h3>
+          <textarea id="askInput" placeholder="What would you like to ask leadership?"></textarea>
+          <button class="btn block" onclick="submitQuestion()">Submit question</button>
+        </div>
+        <div class="card"><h3>Submitted questions</h3><div id="askList"><div class="empty">No questions yet — be the first.</div></div></div>
+      </div>
+
+      <div id="engage-wall" style="display:none">
+        <div class="card">
+          <h3>Share a moment</h3>
+          <select class="field" id="wallEmoji">
+            <option value="📷">📷 Moment</option><option value="🏔️">🏔️ Scenic Coorg</option><option value="😂">😂 Funniest picture</option><option value="🤝">🤝 I see you</option><option value="🎉">🎉 Best moments</option>
+          </select>
+          <textarea id="wallCaption" placeholder="Add a caption…"></textarea>
+          <button class="btn block" onclick="postWall()">Post to wall</button>
+        </div>
+        <div id="wallList"></div>
+      </div>
+
+      <div id="engage-board" style="display:none">
+        <div class="card"><h3>Most engaged</h3><div id="boardList"></div></div>
+      </div>
+
+      <div id="engage-survey" style="display:none">
+        <div class="card">
+          <h3>Post-conference survey</h3>
+          <label>Overall rating (1–5)</label><input id="surveyRating" type="number" min="1" max="5" placeholder="5">
+          <label>What worked well?</label><textarea id="surveyGood"></textarea>
+          <label>What should improve?</label><textarea id="surveyImprove"></textarea>
+          <button class="btn block" onclick="submitSurvey()">Submit survey</button>
+          <p id="surveyDone" style="margin-top:8px;"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HELP -->
+    <section class="screen" id="screen-help">
+      <h1 class="page-title">Help &amp; Support</h1>
+      <p class="page-sub">Need something? Reach the organizing team directly.</p>
+      <button class="sos-btn" onclick="sendSOS()">🆘 SOS — I need assistance now</button>
+      <div class="card">
+        <h3>Request help</h3>
+        <select class="field" id="helpType">
+          <option>Travel</option><option>Hotel check-in</option><option>Registration</option><option>General</option>
+        </select>
+        <textarea id="helpMsg" placeholder="Describe what you need help with…"></textarea>
+        <button class="btn block" onclick="submitHelp()">Send request</button>
+      </div>
+      <div class="card"><h3>Your requests</h3><div id="myHelpList"><div class="empty">No requests yet.</div></div></div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="screen" id="screen-admin">
+      <h1 class="page-title">Admin dashboard</h1>
+      <p class="page-sub">Live view across all attendees.</p>
+
+      <div class="grid2" style="margin-bottom:12px;">
+        <div class="stat-card"><div class="n" id="admStatYes">0</div><div class="l">Checked in — yes</div></div>
+        <div class="stat-card"><div class="n" id="admStatNo">0</div><div class="l">Confirmed no</div></div>
+        <div class="stat-card"><div class="n" id="admStatPending">0</div><div class="l">Not answered yet</div></div>
+        <div class="stat-card"><div class="n" id="admStatSOS">0</div><div class="l">Open SOS / help</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Push a notification</h3>
+        <input id="admNotifText" placeholder="e.g. Bus to Coorg leaves in 15 mins from Gate 2">
+        <button class="btn block" onclick="pushNotification()">Send to all attendees</button>
+      </div>
+
+      <div class="card">
+        <h3>Participant directory</h3>
+        <div id="admDirectory"></div>
+      </div>
+
+      <div class="card">
+        <h3>Help &amp; SOS requests</h3>
+        <div id="admHelpList"><div class="empty">No requests yet.</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Memory wall moderation</h3>
+        <div id="admWallList"><div class="empty">Nothing posted yet.</div></div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="tabbar" id="tabbar">
+    <button data-screen="home" class="active"><span class="dot"></span>Home</button>
+    <button data-screen="schedule"><span class="dot"></span>Schedule</button>
+    <button data-screen="travel"><span class="dot"></span>Travel</button>
+    <button data-screen="engage"><span class="dot"></span>Engage</button>
+    <button data-screen="help"><span class="dot"></span>Help</button>
+    <button data-screen="admin" id="adminTabBtn" style="display:none"><span class="dot"></span>Admin</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  </div><!-- /mainApp -->
+</div>
+
+<script>
+/* ================================================================
+   ONE-TIME SETUP — paste your own values here (see SETUP_GUIDE.md)
+   ================================================================ */
+const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+const ONESIGNAL_APP_ID = "PASTE_YOUR_ONESIGNAL_APP_ID_HERE";
+const ADMIN_PIN = "2026"; // change this before sending the link out
+/* ================================================================ */
+
+let currentPersona = null;   // set once the attendee registers
+let isAdmin = false;
+
+const SCHEDULE = [
+  {id:"d1", day:"Day 1", items:[
+    {time:"09:00", title:"Registration & Welcome Coffee", venue:"Hilton Lobby"},
+    {time:"10:00", title:"Opening Keynote — The Leap Forward", venue:"Grand Ballroom"},
+    {time:"11:30", title:"D2-04 Macro Economics — Panel", venue:"Hall B"},
+    {time:"19:30", title:"Welcome Dinner", venue:"Poolside Deck"},
+  ]},
+  {id:"d2", day:"Day 2", items:[
+    {time:"09:30", title:"Breakout — Rise: Growth Strategy", venue:"Hall A"},
+    {time:"13:00", title:"Lunch & Networking", venue:"Garden Terrace"},
+    {time:"15:00", title:"Ask Leadership — Live Q&A", venue:"Grand Ballroom"},
+    {time:"20:00", title:"Closing Night & Awards", venue:"Amphitheatre"},
+  ]},
+];
+
+const POLLS = [
+  {id:"p1", q:"Which theme resonates most with your team right now?", options:["Elevate","Rise","Transform","Lead"]},
+  {id:"p2", q:"Favorite session format?", options:["Keynote","Panel","Workshop","Fireside chat"]},
+];
+
+/* ---------- storage helpers (talk to the Google Sheet via Apps Script) ---------- */
+async function sget(key){
+  try{
+    const res = await fetch(API_URL + "?action=get&key=" + encodeURIComponent(key));
+    const data = await res.json();
+    return data.value ? JSON.parse(data.value) : null;
+  }catch(e){ console.error('sget failed', e); return null; }
+}
+async function sset(key,val){
+  try{
+    await fetch(API_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"}, // avoids a CORS preflight against Apps Script
+      body: JSON.stringify({ action:"set", key, value: JSON.stringify(val) })
+    });
+  }catch(e){ console.error('sset failed', e); toast('Could not save — check your connection'); }
+}
+async function sendPushToAll(message){
+  try{
+    await fetch(API_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({ action:"sendPush", message })
+    });
+  }catch(e){ console.error('push failed', e); }
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function k(prefix){ return prefix+":"+currentPersona; }
+
+/* ---------- nav ---------- */
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  if(name==='home') renderHome();
+  if(name==='schedule') renderSchedule();
+  if(name==='travel') renderTravel();
+  if(name==='engage') renderEngage();
+  if(name==='help') renderHelp();
+  if(name==='admin') renderAdmin();
+}
+document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)));
+
+/* ---------- identity: registration gate + organizer login ---------- */
+function boot(){
+  const savedAdmin = localStorage.getItem('flit_admin') === 'true';
+  const savedAttendee = localStorage.getItem('flit_attendee');
+
+  if(savedAdmin){
+    isAdmin = true;
+    currentPersona = 'Admin';
+    enterApp();
+    document.getElementById('adminTabBtn').style.display = 'flex';
+    showScreen('admin');
+    return;
+  }
+  if(savedAttendee){
+    const a = JSON.parse(savedAttendee);
+    currentPersona = a.name;
+    enterApp();
+    showScreen('home');
+    return;
+  }
+  document.getElementById('gate').style.display = 'block';
+}
+
+function enterApp(){
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('whoAmI').textContent = isAdmin ? 'Organizer view' : currentPersona;
+  document.getElementById('orgLoginBtn').style.display = isAdmin ? 'none' : 'inline-flex';
+  if(typeof OneSignalDeferred !== 'undefined' && !isAdmin){
+    OneSignalDeferred.push(async function(OneSignal){
+      try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
+    });
+  }
+}
+
+async function completeRegistration(){
+  const reg = {
+    name: document.getElementById('gName').value.trim(),
+    email: document.getElementById('gEmail').value.trim(),
+    contact: document.getElementById('gContact').value.trim(),
+    country: document.getElementById('gCountry').value.trim(),
+    flight: document.getElementById('gFlight').value.trim(),
+    dietary: document.getElementById('gDietary').value,
+    arrival: document.getElementById('gArrival').value.trim(),
+    departure: document.getElementById('gDeparture').value.trim(),
+  };
+  if(!reg.name || !reg.email){
+    document.getElementById('gateError').textContent = 'Name and email are required.';
+    return;
+  }
+  currentPersona = reg.name;
+  await sset(k('registration'), reg);
+  await addPoints(10);
+  const list = (await sget('attendees_list')) || [];
+  if(!list.includes(reg.name)){ list.push(reg.name); await sset('attendees_list', list); }
+  localStorage.setItem('flit_attendee', JSON.stringify({name:reg.name}));
+  enterApp();
+  showScreen('home');
+  toast('Registered — welcome to FL!T 2026');
+}
+
+function organizerLogin(){
+  const pin = prompt('Organizer PIN:');
+  if(pin === null) return;
+  if(pin === ADMIN_PIN){
+    isAdmin = true;
+    currentPersona = 'Admin';
+    localStorage.setItem('flit_admin','true');
+    document.getElementById('adminTabBtn').style.display = 'flex';
+    enterApp();
+    showScreen('admin');
+  } else {
+    alert('Incorrect PIN.');
+  }
+}
+
+/* ---------- points ---------- */
+async function addPoints(n){
+  const cur = (await sget(k('points'))) || 0;
+  await sset(k('points'), cur+n);
+}
+
+/* ================= HOME ================= */
+async function renderHome(){
+  const notifs = (await sget('notifications')) || [];
+  const box = document.getElementById('homeNotifs');
+  box.innerHTML = notifs.length ? notifs.slice(-5).reverse().map(n=>`<div class="row"><span style="font-size:12.5px">${escapeHtml(n.text)}</span><span class="tag">${n.time}</span></div>`).join('') : '<div class="empty">No alerts yet.</div>';
+
+  const nextNotif = notifs[notifs.length-1];
+  document.getElementById('whereNowText').textContent = nextNotif ? nextNotif.text : "You're all set — check Schedule for your next session.";
+  document.getElementById('whereNowMeta').textContent = nextNotif ? "Latest update from organizers" : "Nothing urgent right now";
+
+  const pts = (await sget(k('points'))) || 0;
+  document.getElementById('homePoints').textContent = pts;
+
+  const travel = (await sget(k('travel'))) || {};
+  const travelTag = document.getElementById('homeTravel');
+  travelTag.textContent = travel.boarded ? 'Boarded' : 'Not yet';
+  travelTag.className = 'tag ' + (travel.boarded ? 'ok':'warn');
+
+  const reg = (await sget(k('registration'))) || null;
+  const regTag = document.getElementById('homeReg');
+  regTag.textContent = reg ? 'Complete' : 'Pending';
+  regTag.className = 'tag ' + (reg ? 'ok':'warn');
+}
+
+/* ================= SCHEDULE ================= */
+let activeDay = SCHEDULE[0].id;
+function renderDayTabs(){
+  document.getElementById('dayTabs').innerHTML = SCHEDULE.map(d=>
+    `<button class="${d.id===activeDay?'active':''}" onclick="activeDay='${d.id}'; renderSchedule();">${d.day}</button>`
+  ).join('');
+}
+async function renderSchedule(){
+  renderDayTabs();
+  const checkins = (await sget(k('checkins'))) || {};
+  const day = SCHEDULE.find(d=>d.id===activeDay);
+  document.getElementById('sessionList').innerHTML = day.items.map((s,i)=>{
+    const key = day.id+'-'+i;
+    const done = checkins[key];
+    return `<div class="session">
+      <div class="time">${s.time}</div>
+      <div class="title">${s.title}</div>
+      <div class="row">
+        <span class="venue">${s.venue}</span>
+        <button class="btn small ${done?'secondary':''}" onclick="toggleCheckin('${key}')">${done?'✓ Checked in':'Check in'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function toggleCheckin(sessionKey){
+  const checkins = (await sget(k('checkins'))) || {};
+  const wasDone = !!checkins[sessionKey];
+  checkins[sessionKey] = !wasDone;
+  await sset(k('checkins'), checkins);
+  if(!wasDone) await addPoints(5);
+  renderSchedule();
+  toast(wasDone ? 'Check-in removed' : '+5 points — checked in');
+}
+
+/* ================= TRAVEL & STAY ================= */
+document.getElementById('travelSubnav').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#travelSubnav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['reg','ride','hotel'].forEach(t=>document.getElementById('travel-'+t).style.display = (t===btn.dataset.t)?'block':'none');
+});
+async function renderTravel(){
+  const reg = (await sget(k('registration'))) || {};
+  document.getElementById('regSummary').innerHTML = `
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Name</span><span style="font-size:12.5px">${escapeHtml(reg.name||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Email</span><span style="font-size:12.5px">${escapeHtml(reg.email||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Contact</span><span style="font-size:12.5px">${escapeHtml(reg.contact||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Country</span><span style="font-size:12.5px">${escapeHtml(reg.country||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Flight</span><span style="font-size:12.5px">${escapeHtml(reg.flight||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Dietary</span><span style="font-size:12.5px">${escapeHtml(reg.dietary||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Arrival</span><span style="font-size:12.5px">${escapeHtml(reg.arrival||'—')}</span></div>
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Departure</span><span style="font-size:12.5px">${escapeHtml(reg.departure||'—')}</span></div>`;
+
+  const travel = (await sget(k('travel'))) || {};
+  document.getElementById('rideInfo').textContent = travel.vehicle
+    ? `Vehicle ${travel.vehicle} — Driver ${travel.driver||'TBA'}. Pickup from ${travel.pickupFrom||'airport'}.`
+    : 'No pickup assigned yet — admin will allocate a vehicle before your arrival.';
+  document.getElementById('busInfo').textContent = travel.bus ? `You're on bus ${travel.bus} to Coorg.` : 'Bus allocation will appear here once assigned.';
+
+  const hotel = (await sget(k('hotel'))) || {};
+  document.getElementById('hotelInfo').textContent = hotel.room
+    ? `Room ${hotel.room}${hotel.roommate?(' · sharing with '+hotel.roommate):''}. ${hotel.instructions||''}`
+    : "Room allocation pending — you'll see your room number and roommate here once assigned.";
+}
+async function setTravelCheckin(val){
+  const travel = (await sget(k('travel'))) || {};
+  travel.boarded = val;
+  await sset(k('travel'), travel);
+  if(val) await addPoints(5);
+  toast(val ? 'Marked as boarded' : 'Marked as not yet boarded');
+}
+async function setHotelCheckin(val){
+  const hotel = (await sget(k('hotel'))) || {};
+  hotel.checkedIn = val;
+  await sset(k('hotel'), hotel);
+  toast(val ? 'Hotel check-in confirmed' : 'Updated');
+}
+
+/* ================= ENGAGE ================= */
+document.getElementById('engageSubnav').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#engageSubnav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['polls','ask','wall','board','survey'].forEach(t=>document.getElementById('engage-'+t).style.display = (t===btn.dataset.e)?'block':'none');
+  if(btn.dataset.e==='wall') renderWall();
+  if(btn.dataset.e==='board') renderBoard();
+  if(btn.dataset.e==='ask') renderAsk();
+});
+async function renderEngage(){ await renderPolls(); }
+
+async function renderPolls(){
+  const votes = (await sget(k('pollvotes'))) || {};
+  const allVotes = (await sget('pollvotes_all')) || {};
+  document.getElementById('engage-polls').innerHTML = POLLS.map(p=>{
+    const counts = allVotes[p.id] || {};
+    const total = Object.values(counts).reduce((a,b)=>a+b,0) || 0;
+    const myVote = votes[p.id];
+    const opts = p.options.map((o,i)=>{
+      const c = counts[i]||0;
+      const pct = total ? Math.round(c/total*100) : 0;
+      return `<div class="poll-opt ${myVote===i?'voted':''}" onclick="vote('${p.id}',${i})">
+        <div class="fill" style="width:${pct}%"></div>
+        <div class="label"><span>${o}</span><span>${myVote!==undefined?pct+'%':''}</span></div>
+      </div>`;
+    }).join('');
+    return `<div class="card"><h3>${p.q}</h3>${opts}</div>`;
+  }).join('');
+}
+async function vote(pollId, idx){
+  const votes = (await sget(k('pollvotes'))) || {};
+  const allVotes = (await sget('pollvotes_all')) || {};
+  if(votes[pollId] !== undefined) { toast('You already voted'); return; }
+  votes[pollId] = idx;
+  allVotes[pollId] = allVotes[pollId] || {};
+  allVotes[pollId][idx] = (allVotes[pollId][idx]||0) + 1;
+  await sset(k('pollvotes'), votes);
+  await sset('pollvotes_all', allVotes);
+  await addPoints(3);
+  renderPolls();
+  toast('Vote recorded — +3 points');
+}
+
+async function renderAsk(){
+  const qs = (await sget('questions')) || [];
+  document.getElementById('askList').innerHTML = qs.length ? qs.slice().reverse().map(q=>
+    `<div class="row" style="align-items:flex-start"><span style="font-size:12.5px">${escapeHtml(q.text)}</span><span class="tag">${q.persona.split(' ')[0]}</span></div>`
+  ).join('') : '<div class="empty">No questions yet — be the first.</div>';
+}
+async function submitQuestion(){
+  const val = document.getElementById('askInput').value.trim();
+  if(!val) return;
+  const qs = (await sget('questions')) || [];
+  qs.push({text:val, persona:currentPersona, time:new Date().toLocaleTimeString()});
+  await sset('questions', qs);
+  document.getElementById('askInput').value='';
+  await addPoints(3);
+  renderAsk();
+  toast('Question submitted — +3 points');
+}
+
+async function renderWall(){
+  const posts = (await sget('memorywall')) || [];
+  document.getElementById('wallList').innerHTML = posts.length ? posts.slice().reverse().map(p=>
+    `<div class="wall-item"><span class="emoji">${p.emoji}</span><div class="cap">${escapeHtml(p.caption||'')}</div><div class="meta">${p.persona} · ${p.time}</div></div>`
+  ).join('') : '<div class="empty">Nothing posted yet — share the first moment.</div>';
+}
+async function postWall(){
+  const emoji = document.getElementById('wallEmoji').value;
+  const caption = document.getElementById('wallCaption').value.trim();
+  const posts = (await sget('memorywall')) || [];
+  posts.push({emoji, caption, persona:currentPersona, time:new Date().toLocaleTimeString()});
+  await sset('memorywall', posts);
+  document.getElementById('wallCaption').value='';
+  await addPoints(4);
+  renderWall();
+  toast('Posted to wall — +4 points');
+}
+
+async function renderBoard(){
+  const rows = [];
+  for(const p of ((await sget('attendees_list')) || [])){
+    const pts = (await sget('points:'+p)) || 0;
+    rows.push({name:p, pts});
+  }
+  rows.sort((a,b)=>b.pts-a.pts);
+  document.getElementById('boardList').innerHTML = rows.map((r,i)=>
+    `<div class="leaderboard-row"><span class="lb-rank">${i+1}</span><span class="lb-name">${r.name}</span><span class="lb-pts">${r.pts} pts</span></div>`
+  ).join('');
+}
+
+async function submitSurvey(){
+  const s = {
+    persona: currentPersona,
+    rating: document.getElementById('surveyRating').value,
+    good: document.getElementById('surveyGood').value,
+    improve: document.getElementById('surveyImprove').value,
+  };
+  const all = (await sget('survey')) || [];
+  all.push(s);
+  await sset('survey', all);
+  document.getElementById('surveyDone').textContent = 'Thanks — your feedback was recorded.';
+  await addPoints(5);
+  toast('Survey submitted — +5 points');
+}
+
+/* ================= HELP ================= */
+async function renderHelp(){
+  const all = (await sget('helprequests')) || [];
+  const mine = all.filter(h=>h.persona===currentPersona);
+  document.getElementById('myHelpList').innerHTML = mine.length ? mine.slice().reverse().map(h=>
+    `<div class="row"><span style="font-size:12.5px">${escapeHtml(h.message)} <span class="tag">${h.type}</span></span><span class="tag ${h.resolved?'ok':'warn'}">${h.resolved?'Resolved':'Open'}</span></div>`
+  ).join('') : '<div class="empty">No requests yet.</div>';
+}
+async function submitHelp(){
+  const msg = document.getElementById('helpMsg').value.trim();
+  if(!msg) return;
+  const all = (await sget('helprequests')) || [];
+  all.push({persona:currentPersona, type:document.getElementById('helpType').value, message:msg, time:new Date().toLocaleTimeString(), resolved:false, sos:false});
+  await sset('helprequests', all);
+  document.getElementById('helpMsg').value='';
+  renderHelp();
+  toast('Request sent to the organizing team');
+}
+async function sendSOS(){
+  const all = (await sget('helprequests')) || [];
+  all.push({persona:currentPersona, type:'SOS', message:'Immediate assistance requested', time:new Date().toLocaleTimeString(), resolved:false, sos:true});
+  await sset('helprequests', all);
+  renderHelp();
+  toast('SOS sent — the team has been alerted');
+}
+
+/* ================= ADMIN ================= */
+async function renderAdmin(){
+  let yes=0,no=0,pending=0;
+  const directory = [];
+  for(const p of ((await sget('attendees_list')) || [])){
+    const travel = (await sget('travel:'+p)) || {};
+    if(travel.boarded===true) yes++; else if(travel.boarded===false) no++; else pending++;
+    const reg = (await sget('registration:'+p)) || {};
+    directory.push({name:p, email:reg.email||'—', contact:reg.contact||'—', boarded:travel.boarded});
+  }
+  document.getElementById('admStatYes').textContent = yes;
+  document.getElementById('admStatNo').textContent = no;
+  document.getElementById('admStatPending').textContent = pending;
+
+  const helpAll = (await sget('helprequests')) || [];
+  const open = helpAll.filter(h=>!h.resolved);
+  document.getElementById('admStatSOS').textContent = open.length;
+
+  document.getElementById('admDirectory').innerHTML = directory.map(d=>
+    `<div class="row"><span style="font-size:12.5px">${d.name} <span class="tag">${d.email}</span></span><span class="tag ${d.boarded===true?'ok':d.boarded===false?'warn':''}">${d.boarded===true?'Boarded':d.boarded===false?'Not boarded':'No answer'}</span></div>`
+  ).join('');
+
+  document.getElementById('admHelpList').innerHTML = helpAll.length ? helpAll.slice().reverse().map((h,idx)=>{
+    const realIdx = helpAll.length-1-idx;
+    return `<div class="row"><span style="font-size:12.5px">${h.sos?'🆘 ':''}${h.persona} — ${escapeHtml(h.message)} <span class="tag">${h.type}</span></span>
+      <button class="btn small secondary" onclick="resolveHelp(${realIdx})">${h.resolved?'Reopen':'Resolve'}</button></div>`;
+  }).join('') : '<div class="empty">No requests yet.</div>';
+
+  const wall = (await sget('memorywall')) || [];
+  document.getElementById('admWallList').innerHTML = wall.length ? wall.slice().reverse().map((w,idx)=>{
+    const realIdx = wall.length-1-idx;
+    return `<div class="row"><span style="font-size:12.5px">${w.emoji} ${w.persona} — ${escapeHtml(w.caption||'')}</span><button class="btn small secondary" onclick="removeWall(${realIdx})">Remove</button></div>`;
+  }).join('') : '<div class="empty">Nothing posted yet.</div>';
+}
+async function resolveHelp(idx){
+  const all = (await sget('helprequests')) || [];
+  all[idx].resolved = !all[idx].resolved;
+  await sset('helprequests', all);
+  renderAdmin();
+}
+async function removeWall(idx){
+  const all = (await sget('memorywall')) || [];
+  all.splice(idx,1);
+  await sset('memorywall', all);
+  renderAdmin();
+}
+async function pushNotification(){
+  const text = document.getElementById('admNotifText').value.trim();
+  if(!text) return;
+  const all = (await sget('notifications')) || [];
+  all.push({text, time:new Date().toLocaleTimeString()});
+  await sset('notifications', all);       // in-app banner, shown when the app is open
+  await sendPushToAll(text);              // real phone push via OneSignal (works app-closed too)
+  document.getElementById('admNotifText').value='';
+  toast('Pushed to all attendees\' phones');
+}
+
+/* ---------- utils ---------- */
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- boot ---------- */
+if(typeof OneSignalDeferred === 'undefined'){ window.OneSignalDeferred = []; }
+OneSignalDeferred.push(async function(OneSignal){
+  try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID }); }catch(e){ console.error('OneSignal init failed', e); }
+});
+boot();
+</script>
+</body>
+</html>
