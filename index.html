@@ -539,14 +539,75 @@ async function addPoints(n){
 }
 
 /* ================= HOME ================= */
+function getCurrentSession() {
+
+  const now = new Date();
+
+  for (const day of SCHEDULE) {
+
+    for (const session of day.items) {
+
+      const dateStr = day.day;
+
+      const start = new Date(`${dateStr} ${session.time}`);
+      const end = new Date(`${dateStr} ${session.end}`);
+
+      if (now >= start && now <= end) {
+        return {
+          type: "current",
+          session
+        };
+      }
+
+      if (now < start) {
+        return {
+          type: "next",
+          session
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 async function renderHome(){
   const notifs = (await sget('notifications')) || [];
   const box = document.getElementById('homeNotifs');
   box.innerHTML = notifs.length ? notifs.slice(-5).reverse().map(n=>`<div class="row"><span style="font-size:12.5px">${escapeHtml(n.text)}</span><span class="tag">${n.time}</span></div>`).join('') : '<div class="empty">No alerts yet.</div>';
 
-  const nextNotif = notifs[notifs.length-1];
-  document.getElementById('whereNowText').textContent = nextNotif ? nextNotif.text : "You're all set — check Schedule for your next session.";
-  document.getElementById('whereNowMeta').textContent = nextNotif ? "Latest update from organizers" : "Nothing urgent right now";
+  const currentSession = getCurrentSession();
+
+  if(currentSession){
+
+    if(currentSession.type === "current"){
+
+      document.getElementById('whereNowText').textContent =
+        currentSession.session.title;
+
+      document.getElementById('whereNowMeta').textContent =
+        `${currentSession.session.venue} | ${currentSession.session.time} - ${currentSession.session.end}`;
+
+    } else {
+
+      document.getElementById('whereNowText').textContent =
+        "Break Time";
+
+      document.getElementById('whereNowMeta').textContent =
+        `Next: ${currentSession.session.title} | ${currentSession.session.time}`;
+
+    }
+
+  } else {
+
+    document.getElementById('whereNowText').textContent =
+      "Conference Complete";
+
+    document.getElementById('whereNowMeta').textContent =
+      "No more sessions scheduled";
+
+  }
+
 
   const pts = (await sget(k('points'))) || 0;
   document.getElementById('homePoints').textContent = pts;
