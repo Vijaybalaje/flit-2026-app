@@ -369,20 +369,39 @@ const ADMIN_PIN = "2026"; // change this before sending the link out
 let currentPersona = null;   // set once the attendee registers
 let isAdmin = false;
 
-const SCHEDULE = [
-  {id:"d1", day:"Day 1", items:[
-    {time:"09:00", title:"Registration & Welcome Coffee", venue:"Hilton Lobby"},
-    {time:"10:00", title:"Opening Keynote — The Leap Forward", venue:"Grand Ballroom"},
-    {time:"11:30", title:"D2-04 Macro Economics — Panel", venue:"Hall B"},
-    {time:"19:30", title:"Welcome Dinner", venue:"Poolside Deck"},
-  ]},
-  {id:"d2", day:"Day 2", items:[
-    {time:"09:30", title:"Breakout — Rise: Growth Strategy", venue:"Hall A"},
-    {time:"13:00", title:"Lunch & Networking", venue:"Garden Terrace"},
-    {time:"15:00", title:"Ask Leadership — Live Q&A", venue:"Grand Ballroom"},
-    {time:"20:00", title:"Closing Night & Awards", venue:"Amphitheatre"},
-  ]},
-];
+let SCHEDULE = [];
+  async function loadSchedule() {
+    const response = await fetch(
+      API_URL + "?action=schedule"
+    );
+
+    const data = await response.json();
+
+    const grouped = {};
+
+    data.forEach(item => {
+      const day = item.date;
+      if (!grouped[day]) {
+        grouped[day] = [];
+      }
+
+    grouped[day].push({
+      time: item.start,
+      end: item.end,
+      title: item.title,
+      venue: item.venue
+    });
+
+  });
+
+  SCHEDULE = Object.keys(grouped).map((day, index) => ({
+    id: "d" + (index + 1),
+    day: day,
+    items: grouped[day]
+  }));
+
+  activeDay = SCHEDULE[0]?.id;
+}
 
 const POLLS = [
   {id:"p1", q:"Which theme resonates most with your team right now?", options:["Elevate","Rise","Transform","Lead"]},
@@ -819,7 +838,11 @@ if(typeof OneSignalDeferred === 'undefined'){ window.OneSignalDeferred = []; }
 OneSignalDeferred.push(async function(OneSignal){
   try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID }); }catch(e){ console.error('OneSignal init failed', e); }
 });
-boot();
+(async function(){
+  await loadSchedule();
+  boot();
+})();
+  
 </script>
 </body>
 </html>
