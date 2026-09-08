@@ -679,18 +679,20 @@ async function loadHotelDetails() {
     r.name.toLowerCase() === currentPersona.toLowerCase()
   );
 
-  if(!hotel) return;
-
+  if(!hotel){
+    document.getElementById('hotelInfo').textContent = 
+      "Room allocation pending - you'll see your room number and roommate here once assigned.";
+    return;
+    
   document.getElementById('hotelInfo').textContent =
     `Room: ${hotel.roomNo} | Roommate: ${hotel.roommate || 'N/A'}`;
+    
 }
 
-In renderTravel(), add:
-
-await loadHotelDetails();
-
-
 async function renderTravel(){
+
+  await loadHotelDetails();
+
   const reg = (await sget(k('registration'))) || {};
   document.getElementById('regSummary').innerHTML = `
     <div class="row"><span style="font-size:12.5px;color:var(--muted)">Name</span><span style="font-size:12.5px">${escapeHtml(reg.name||'—')}</span></div>
