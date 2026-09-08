@@ -577,6 +577,7 @@ async function renderSchedule(){
     document.getElementById('sessionList').innerHTML = 
       '<div class="empty">No schedule available.</div>';
     return;
+  }
   document.getElementById('sessionList').innerHTML = day.items.map((s,i)=>{
     const key = day.id+'-'+i;
     const done = checkins[key];
