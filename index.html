@@ -563,7 +563,7 @@ async function renderHome(){
 }
 
 /* ================= SCHEDULE ================= */
-let activeDay = SCHEDULE[0].id;
+let activeDay = '';
 function renderDayTabs(){
   document.getElementById('dayTabs').innerHTML = SCHEDULE.map(d=>
     `<button class="${d.id===activeDay?'active':''}" onclick="activeDay='${d.id}'; renderSchedule();">${d.day}</button>`
