@@ -400,7 +400,7 @@ let SCHEDULE = [];
     items: grouped[day]
   }));
 
-  activeDay = '';
+  activeDay = SCHEDULE[0]?.id||'';
 }
 
 const POLLS = [
@@ -573,6 +573,10 @@ async function renderSchedule(){
   renderDayTabs();
   const checkins = (await sget(k('checkins'))) || {};
   const day = SCHEDULE.find(d=>d.id===activeDay);
+  if(!day){
+    document.getElementById('sessionList').innerHTML = 
+      '<div class="empty">No schedule available.</div>';
+    return;
   document.getElementById('sessionList').innerHTML = day.items.map((s,i)=>{
     const key = day.id+'-'+i;
     const done = checkins[key];
