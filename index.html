@@ -669,6 +669,27 @@ document.getElementById('travelSubnav').addEventListener('click', e=>{
   btn.classList.add('active');
   ['reg','ride','hotel'].forEach(t=>document.getElementById('travel-'+t).style.display = (t===btn.dataset.t)?'block':'none');
 });
+
+async function loadHotelDetails() {
+
+  const response = await fetch(API_URL + '?action=hotel');
+  const data = await response.json();
+
+  const hotel = data.find(r =>
+    r.name.toLowerCase() === currentPersona.toLowerCase()
+  );
+
+  if(!hotel) return;
+
+  document.getElementById('hotelInfo').textContent =
+    `Room: ${hotel.roomNo} | Roommate: ${hotel.roommate || 'N/A'}`;
+}
+
+In renderTravel(), add:
+
+await loadHotelDetails();
+
+
 async function renderTravel(){
   const reg = (await sget(k('registration'))) || {};
   document.getElementById('regSummary').innerHTML = `
