@@ -671,23 +671,35 @@ document.getElementById('travelSubnav').addEventListener('click', e=>{
 });
 
 async function loadHotelDetails() {
+  try{
+    const response = await fetch(API_URL + '?action=hotel');
+    const data = await response.json();
 
-  const response = await fetch(API_URL + '?action=hotel');
-  const data = await response.json();
+    const hotel = data.find(r =>
+      r.name && r.name.toLowerCase() === currentPersona.toLowerCase()
+    );
 
-  const hotel = data.find(r =>
-    r.name.toLowerCase() === currentPersona.toLowerCase()
-  );
+    if(!hotel){
+      document.getElementById('hotelInfo').textContent =
+        "Room allocation pending — you'll see your room number and roommate here once assigned.";
+      return null;
+    }
 
-  if(!hotel){
-    document.getElementById('hotelInfo').textContent = 
-      "Room allocation pending - you'll see your room number and roommate here once assigned.";
-    return;
-    
-  document.getElementById('hotelInfo').textContent =
-    `Room: ${hotel.roomNo} | Roommate: ${hotel.roommate || 'N/A'}`;
-    
+    document.getElementById('hotelInfo').textContent =
+      `Room: ${hotel.roomNo} | Roommate: ${hotel.roommate || 'N/A'}`;
+    return hotel;
+
+  }catch(e){
+    console.error('loadHotelDetails failed', e);
+    document.getElementById('hotelInfo').textContent =
+      "Room allocation pending — you'll see your room number and roommate here once assigned.";
+    return null;
+  }
 }
+
+async function renderTravel(){
+
+  const hotelRecord = await loadHotelDetails();
 
   const reg = (await sget(k('registration'))) || {};
   document.getElementById('regSummary').innerHTML = `
@@ -706,10 +718,13 @@ async function loadHotelDetails() {
     : 'No pickup assigned yet — admin will allocate a vehicle before your arrival.';
   document.getElementById('busInfo').textContent = travel.bus ? `You're on bus ${travel.bus} to Coorg.` : 'Bus allocation will appear here once assigned.';
 
-  const hotel = (await sget(k('hotel'))) || {};
-  document.getElementById('hotelInfo').textContent = hotel.room
-    ? `Room ${hotel.room}${hotel.roommate?(' · sharing with '+hotel.roommate):''}. ${hotel.instructions||''}`
-    : "Room allocation pending — you'll see your room number and roommate here once assigned.";
+  // fall back to the sheet-stored hotel object if the live API lookup found nothing
+  if(!hotelRecord){
+    const hotel = (await sget(k('hotel'))) || {};
+    document.getElementById('hotelInfo').textContent = hotel.room
+      ? `Room ${hotel.room}${hotel.roommate?(' · sharing with '+hotel.roommate):''}. ${hotel.instructions||''}`
+      : "Room allocation pending — you'll see your room number and roommate here once assigned.";
+  }
 }
 async function setTravelCheckin(val){
   const travel = (await sget(k('travel'))) || {};
