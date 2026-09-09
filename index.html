@@ -697,9 +697,36 @@ async function loadHotelDetails() {
   }
 }
 
+async function loadTravelDetails() {
+
+  const response = await fetch(API_URL + '?action=travel');
+  const data = await response.json();
+
+  const travel = data.find(r =>
+    r.name.toLowerCase() === currentPersona.toLowerCase()
+  );
+
+  if(!travel) return;
+
+  if(travel.flightTravel === 'Y') {
+
+    document.getElementById('rideInfo').textContent =
+      `Vehicle: ${travel.vehicleNumber} | Driver: ${travel.driver} | Contact: ${travel.driverContact} | Pickup Point: ${travel.pickupPoint} | Pickup Time: ${travel.pickupTime}`;
+
+  } else {
+
+    document.getElementById('rideInfo').textContent =
+      'No airport pickup assigned.';
+  }
+
+  document.getElementById('busInfo').textContent =
+    `Bus: ${travel.busNo} | SPOC: ${travel.spocName} | Contact: ${travel.spocContact}`;
+}
+  
 async function renderTravel(){
 
   const hotelRecord = await loadHotelDetails();
+  await loadTravelDetails();
 
   const reg = (await sget(k('registration'))) || {};
   document.getElementById('regSummary').innerHTML = `
