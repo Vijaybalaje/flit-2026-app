@@ -1402,7 +1402,8 @@ if('serviceWorker' in navigator){
 /* ---------- boot ---------- */
 if(typeof OneSignalDeferred === 'undefined'){ window.OneSignalDeferred = []; }
 OneSignalDeferred.push(async function(OneSignal){
-  try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID, 
+  try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID,
+                              path: "flit-2026-app/", 
                               serviceWorkerPath: "OneSignalSDKWorker.js",
                               serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js",
                               serviceWorkerParam: {
