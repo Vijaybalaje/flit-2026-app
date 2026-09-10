@@ -75,6 +75,9 @@
   .tag.warn{border-color:var(--coral); color:var(--coral);}
 
   .session{border-bottom:1px solid var(--border); padding:12px 0;}
+  .session.now{background:linear-gradient(90deg, rgba(201,255,61,.10), transparent); border-left:3px solid var(--lime); border-bottom:1px solid var(--border); padding:12px 10px 12px 12px; margin:0 -10px; border-radius:8px;}
+  .session.now .time{color:var(--lime);}
+  .session .now-badge{display:inline-block; margin-left:8px; font-size:9.5px; font-weight:700; letter-spacing:.03em; color:#0F1210; background:var(--lime); padding:2px 7px; border-radius:100px; vertical-align:middle;}
   .session:last-child{border-bottom:none;}
   .session .time{font-size:11px; color:var(--lime); font-weight:600; font-family:'Space Grotesk',sans-serif;}
   .session .title{font-size:14px; font-weight:600; margin:3px 0 2px;}
@@ -183,12 +186,24 @@
       </div>
       <div class="card">
         <h3>Your status</h3>
-        <div class="row"><span style="font-size:13px;color:var(--muted)">Travel check-in</span><span id="homeTravel" class="tag">—</span></div>
         <div class="row"><span style="font-size:13px;color:var(--muted)">Registration</span><span id="homeReg" class="tag">—</span></div>
       </div>
+
+      <div class="card" id="notifStatusCard">
+        <h3>Notifications</h3>
+        <div class="row"><span style="font-size:13px;color:var(--muted)">Subscription status</span><span id="notifStatusTag" class="tag">—</span></div>
+        <button class="btn block" id="enableNotifsBtn" style="margin-top:10px; display:none;" onclick="enableNotifications()">Enable Notifications</button>
+      </div>
+
+      <div class="card" id="installAppCard" style="display:none;">
+        <h3>Install FL!T App</h3>
+        <p style="margin-bottom:10px;">Get faster access and notifications.</p>
+        <button class="btn block" id="installAppBtn" onclick="installApp()">Install App</button>
+      </div>
+
       <div class="card">
         <div class="row" style="margin-bottom:6px;">
-          <h3 style="margin:0;">Notifications</h3>
+          <h3 style="margin:0;">Notification history</h3>
           <button class="btn small secondary" onclick="markNotificationsRead()">Mark all read</button>
         </div>
         <div id="homeNotifs"><div class="empty">No alerts yet.</div></div>
@@ -226,18 +241,26 @@
         <div class="card">
           <h3>Airport pickup</h3>
           <p id="rideInfo">Loading…</p>
-        </div>
-        <div class="card">
-          <h3>Confirm boarding</h3>
-          <p>Have you boarded your assigned vehicle for transfer?</p>
+          <div class="row" style="margin-top:10px;">
+            <span style="font-size:13px;color:var(--muted)">Status</span>
+            <span id="airportBoardedTag" class="tag">—</span>
+          </div>
           <div class="grid2" style="margin-top:10px">
-            <button class="btn" onclick="setTravelCheckin(true)">Yes, boarded</button>
-            <button class="btn secondary" onclick="setTravelCheckin(false)">Not yet</button>
+            <button class="btn" id="airportBoardedBtn" onclick="setAirportBoarded(true)">Boarded</button>
+            <button class="btn secondary" id="airportNotBoardedBtn" onclick="setAirportBoarded(false)">Not Yet</button>
           </div>
         </div>
         <div class="card">
-          <h3>Bus / transfer to Coorg</h3>
+          <h3>Coorg Transfer</h3>
           <p id="busInfo">Loading…</p>
+          <div class="row" style="margin-top:10px;">
+            <span style="font-size:13px;color:var(--muted)">Status</span>
+            <span id="coorgBoardedTag" class="tag">—</span>
+          </div>
+          <div class="grid2" style="margin-top:10px">
+            <button class="btn" id="coorgBoardedBtn" onclick="setCoorgBoarded(true)">Boarded</button>
+            <button class="btn secondary" id="coorgNotBoardedBtn" onclick="setCoorgBoarded(false)">Not Yet</button>
+          </div>
         </div>
       </div>
 
@@ -248,9 +271,13 @@
         </div>
         <div class="card">
           <h3>Hotel check-in</h3>
+          <div class="row" style="margin-bottom:10px;">
+            <span style="font-size:13px;color:var(--muted)">Status</span>
+            <span id="hotelCheckedInTag" class="tag">—</span>
+          </div>
           <div class="grid2">
-            <button class="btn" onclick="setHotelCheckin(true)">Checked in</button>
-            <button class="btn secondary" onclick="setHotelCheckin(false)">Not yet</button>
+            <button class="btn" id="hotelCheckedInBtn" onclick="setHotelCheckin(true)">Checked in</button>
+            <button class="btn secondary" id="hotelNotCheckedInBtn" onclick="setHotelCheckin(false)">Not Yet</button>
           </div>
         </div>
       </div>
@@ -331,6 +358,22 @@
         <div class="stat-card"><div class="n" id="admBus">0</div><div class="l">Bus allocated</div></div>
         <div class="stat-card"><div class="n" id="admStatSOS">0</div><div class="l">Open SOS</div></div>
         <div class="stat-card"><div class="n" id="admStatHelp">0</div><div class="l">Open help requests</div></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <h3 style="margin:0;">Transport Operations</h3>
+        </div>
+        <div class="grid2" style="margin-bottom:12px;">
+          <div class="stat-card"><div class="l">Airport Boarding</div><div class="n" id="transportAirport">0 / 0</div></div>
+          <div class="stat-card"><div class="l">Coorg Boarding</div><div class="n" id="transportCoorg">0 / 0</div></div>
+        </div>
+        <h3 style="font-size:12.5px; color:var(--muted); margin:10px 0 6px;">Bus-wise boarding</h3>
+        <div id="busSummaryList"><div class="loading">Loading…</div></div>
+        <div class="grid2" style="margin-top:12px;">
+          <button class="btn secondary" onclick="resetAirportBoarding()">Reset Airport Boarding</button>
+          <button class="btn secondary" onclick="resetCoorgBoarding()">Reset Coorg Boarding</button>
+        </div>
       </div>
 
       <div class="card">
@@ -722,22 +765,94 @@ async function renderHome(){
     }
   }
 
-  const travel = (await sget(k('travel'))) || {};
-  const travelTag = document.getElementById('homeTravel');
-  travelTag.textContent = travel.boarded ? 'Boarded' : 'Not yet';
-  travelTag.className = 'tag ' + (travel.boarded ? 'ok':'warn');
-
   const reg = (await sget(k('registration'))) || null;
   const regTag = document.getElementById('homeReg');
   regTag.textContent = reg ? 'Complete' : 'Pending';
   regTag.className = 'tag ' + (reg ? 'ok':'warn');
 
+  renderNotifStatusCard();
+  renderInstallCard();
   updateHelpBadge();
 }
 
 function markNotificationsRead(){
   localStorage.setItem('flit_notifs_read_at', Date.now().toString());
   toast('Marked as read');
+}
+
+/* ---------------- notifications enablement card ---------------- */
+function renderNotifStatusCard(){
+  const tag = document.getElementById('notifStatusTag');
+  const btn = document.getElementById('enableNotifsBtn');
+
+  const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+
+  if(perm === 'granted'){
+    tag.textContent = '✅ Notifications Enabled';
+    tag.className = 'tag ok';
+    btn.style.display = 'none';
+  } else if(perm === 'denied'){
+    tag.textContent = '⚠ Notifications Blocked';
+    tag.className = 'tag warn';
+    btn.style.display = 'none';
+  } else if(perm === 'unsupported'){
+    tag.textContent = 'Not supported on this device';
+    tag.className = 'tag';
+    btn.style.display = 'none';
+  } else {
+    tag.textContent = '⚠ Notifications Not Enabled';
+    tag.className = 'tag warn';
+    btn.style.display = 'block';
+  }
+}
+
+async function enableNotifications(){
+  if(typeof OneSignalDeferred === 'undefined'){
+    toast('Notifications are not available yet — try again in a moment.');
+    return;
+  }
+  OneSignalDeferred.push(async function(OneSignal){
+    try{
+      await OneSignal.Notifications.requestPermission();
+    }catch(e){
+      console.error('requestPermission failed', e);
+    }
+    renderNotifStatusCard();
+    if(typeof Notification !== 'undefined' && Notification.permission === 'granted'){
+      toast('Notifications enabled');
+    }
+  });
+}
+
+/* ---------------- PWA install card ---------------- */
+function renderInstallCard(){
+  const card = document.getElementById('installAppCard');
+  const btn = document.getElementById('installAppBtn');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  if(isStandalone){
+    card.style.display = 'none';
+    return;
+  }
+  if(deferredInstallPrompt){
+    card.style.display = 'block';
+    btn.textContent = 'Install App';
+    btn.disabled = false;
+  } else {
+    card.style.display = 'none';
+  }
+}
+
+async function installApp(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  if(choice.outcome === 'accepted'){
+    document.getElementById('installAppBtn').textContent = '✅ App Installed';
+    document.getElementById('installAppBtn').disabled = true;
+    setTimeout(()=>{ document.getElementById('installAppCard').style.display = 'none'; }, 1500);
+  }
+  deferredInstallPrompt = null;
 }
 
 /* ================= SCHEDULE ================= */
@@ -765,6 +880,13 @@ function renderDayTabs(days){
   ).join('');
 }
 
+function isSessionNow_(day, session){
+  const now = new Date();
+  const start = new Date(`${day.day} ${session.time}`);
+  const end = new Date(`${day.day} ${session.end}`);
+  return now >= start && now <= end;
+}
+
 function renderSchedule(useDefaultDay){
   const days = groupScheduleByDay_(window.appCache.schedule);
   if(!days.length){
@@ -777,12 +899,15 @@ function renderSchedule(useDefaultDay){
   }
   renderDayTabs(days);
   const day = days.find(d=>d.id===activeDay);
-  document.getElementById('sessionList').innerHTML = day.items.map(s=>`
-    <div class="session">
-      <div class="time">${s.time} – ${s.end}</div>
+  document.getElementById('sessionList').innerHTML = day.items.map(s=>{
+    const isNow = isSessionNow_(day, s);
+    return `
+    <div class="session${isNow ? ' now' : ''}">
+      <div class="time">${s.time} – ${s.end}${isNow ? '<span class="now-badge">NOW</span>' : ''}</div>
       <div class="title">${escapeHtml(s.title)}</div>
       <div class="venue">${escapeHtml(s.venue)}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ================= TRAVEL & STAY ================= */
@@ -821,12 +946,14 @@ async function renderTravelFromCache(){
 
   // ---- travel (airport pickup + bus) ----
   const travel = findMineByNameOrEmail_(window.appCache.travel || []);
+  const travelState = (await sget(k('travel'))) || {};
+
   if(travel){
     if(travel.flightTravel === 'Y'){
       document.getElementById('rideInfo').textContent =
         `Vehicle: ${travel.vehicleNumber} | Driver: ${travel.driver} | Contact: ${travel.driverContact} | Pickup Point: ${travel.pickupPoint} | Pickup Time: ${travel.pickupTime}`;
     } else {
-      document.getElementById('rideInfo').textContent = 'No airport pickup assigned.';
+      document.getElementById('rideInfo').textContent = 'Airport Pickup: Not Applicable';
     }
     document.getElementById('busInfo').textContent =
       `Bus: ${travel.busNo || 'TBA'} | SPOC: ${travel.spocName || 'TBA'} | Contact: ${travel.spocContact || 'TBA'}`;
@@ -834,6 +961,9 @@ async function renderTravelFromCache(){
     document.getElementById('rideInfo').textContent = 'No pickup assigned yet — admin will allocate a vehicle before your arrival.';
     document.getElementById('busInfo').textContent = 'Bus allocation will appear here once assigned.';
   }
+
+  renderAirportBoardingUI_(travel, travelState);
+  renderCoorgBoardingUI_(travelState);
 
   // ---- hotel ----
   const hotel = findMineByNameOrEmail_(window.appCache.hotel || []);
@@ -843,18 +973,97 @@ async function renderTravelFromCache(){
   } else {
     document.getElementById('hotelInfo').textContent = "Room allocation pending — you'll see your room number and roommate here once assigned.";
   }
+
+  renderHotelCheckinUI_((await sget(k('hotel'))) || {});
 }
 
-async function setTravelCheckin(val){
+function setActiveButtonPair_(activeBtnId, inactiveBtnId, isActive){
+  const activeBtn = document.getElementById(activeBtnId);
+  const inactiveBtn = document.getElementById(inactiveBtnId);
+  if(!activeBtn || !inactiveBtn) return;
+  // Only the button matching the current state gets the highlighted ("btn") look;
+  // the other always falls back to "btn secondary" — never both, never neither.
+  if(isActive === true){
+    activeBtn.className = 'btn';
+    inactiveBtn.className = 'btn secondary';
+  } else if(isActive === false){
+    activeBtn.className = 'btn secondary';
+    inactiveBtn.className = 'btn';
+  } else {
+    activeBtn.className = 'btn secondary';
+    inactiveBtn.className = 'btn secondary';
+  }
+}
+
+function renderAirportBoardingUI_(travel, travelState){
+  const tag = document.getElementById('airportBoardedTag');
+  const boardedBtn = document.getElementById('airportBoardedBtn');
+  const notBoardedBtn = document.getElementById('airportNotBoardedBtn');
+  const applicable = travel && travel.flightTravel === 'Y';
+
+  if(!applicable){
+    tag.textContent = 'Not Applicable';
+    tag.className = 'tag';
+    boardedBtn.disabled = true;
+    notBoardedBtn.disabled = true;
+    boardedBtn.style.opacity = '.5';
+    notBoardedBtn.style.opacity = '.5';
+    boardedBtn.style.pointerEvents = 'none';
+    notBoardedBtn.style.pointerEvents = 'none';
+    boardedBtn.className = 'btn secondary';
+    notBoardedBtn.className = 'btn secondary';
+    return;
+  }
+
+  boardedBtn.disabled = false;
+  notBoardedBtn.disabled = false;
+  boardedBtn.style.opacity = '';
+  notBoardedBtn.style.opacity = '';
+  boardedBtn.style.pointerEvents = '';
+  notBoardedBtn.style.pointerEvents = '';
+
+  const isBoarded = travelState.airportBoarded === true;
+  tag.textContent = isBoarded ? '✅ Boarded' : '❌ Not Boarded';
+  tag.className = 'tag ' + (isBoarded ? 'ok' : 'warn');
+  setActiveButtonPair_('airportBoardedBtn','airportNotBoardedBtn', travelState.airportBoarded === true ? true : (travelState.airportBoarded === false ? false : null));
+}
+
+function renderCoorgBoardingUI_(travelState){
+  const tag = document.getElementById('coorgBoardedTag');
+  const isBoarded = travelState.coorgBoarded === true;
+  tag.textContent = isBoarded ? '✅ Boarded' : '❌ Not Boarded';
+  tag.className = 'tag ' + (isBoarded ? 'ok' : 'warn');
+  setActiveButtonPair_('coorgBoardedBtn','coorgNotBoardedBtn', travelState.coorgBoarded === true ? true : (travelState.coorgBoarded === false ? false : null));
+}
+
+function renderHotelCheckinUI_(hotelState){
+  const tag = document.getElementById('hotelCheckedInTag');
+  const isCheckedIn = hotelState.checkedIn === true;
+  tag.textContent = isCheckedIn ? '✅ Checked In' : '❌ Not Checked In';
+  tag.className = 'tag ' + (isCheckedIn ? 'ok' : 'warn');
+  setActiveButtonPair_('hotelCheckedInBtn','hotelNotCheckedInBtn', hotelState.checkedIn === true ? true : (hotelState.checkedIn === false ? false : null));
+}
+
+async function setAirportBoarded(val){
   const travel = (await sget(k('travel'))) || {};
-  travel.boarded = val;
+  travel.airportBoarded = val;
   await sset(k('travel'), travel);
+  const travelRow = findMineByNameOrEmail_(window.appCache.travel || []);
+  renderAirportBoardingUI_(travelRow, travel);
+  toast(val ? 'Marked as boarded' : 'Marked as not yet boarded');
+}
+async function setCoorgBoarded(val){
+  const travel = (await sget(k('travel'))) || {};
+  travel.coorgBoarded = val;
+  await sset(k('travel'), travel);
+  renderCoorgBoardingUI_(travel);
   toast(val ? 'Marked as boarded' : 'Marked as not yet boarded');
 }
 async function setHotelCheckin(val){
   const hotel = (await sget(k('hotel'))) || {};
   hotel.checkedIn = val;
   await sset(k('hotel'), hotel);
+  renderHotelCheckinUI_(hotel);
   toast(val ? 'Hotel check-in confirmed' : 'Updated');
 }
 
@@ -1006,6 +1215,7 @@ async function renderAdmin(){
   ).join('') : '<div class="empty">Nothing sent yet.</div>';
 
   renderParticipantDirectory();
+  renderTransportDashboard();
 
   const helpAll = (await sget('helprequests')) || [];
   document.getElementById('admHelpList').innerHTML = helpAll.length ? helpAll.slice().reverse().map((h,idx)=>{
@@ -1019,6 +1229,71 @@ async function renderAdmin(){
     const realIdx = wall.length-1-idx;
     return `<div class="row"><span style="font-size:12.5px">${w.emoji} ${escapeHtml(w.persona)} — ${escapeHtml(w.caption||'')}</span><button class="btn small secondary" onclick="removeWall(${realIdx})">Remove</button></div>`;
   }).join('') : '<div class="empty">Nothing posted yet.</div>';
+}
+
+/* ---------------- Transport Operations ---------------- */
+async function renderTransportDashboard(){
+  try{
+    const summary = await apiGet('transportSummary');
+    document.getElementById('transportAirport').textContent = `${summary.airportBoarded||0} / ${summary.airportRequired||0}`;
+    document.getElementById('transportCoorg').textContent = `${summary.coorgBoarded||0} / ${summary.coorgTotal||0}`;
+  }catch(e){
+    console.error('renderTransportDashboard failed', e);
+  }
+
+  try{
+    const buses = await apiGet('busSummary');
+    const list = document.getElementById('busSummaryList');
+    list.innerHTML = buses.length ? buses.map(b => `
+      <div class="row" style="cursor:pointer;" onclick="openBusParticipants('${encodeURIComponent(b.bus)}')">
+        <span style="font-size:13px;">Bus ${escapeHtml(b.bus)}</span>
+        <span class="tag ${b.boarded===b.total ? 'ok':'warn'}">${b.boarded} / ${b.total}</span>
+      </div>`).join('') : '<div class="empty">No buses allocated yet.</div>';
+  }catch(e){
+    document.getElementById('busSummaryList').innerHTML = '<div class="error-msg">Could not load bus summary.</div>';
+  }
+}
+
+async function openBusParticipants(encodedBus){
+  const bus = decodeURIComponent(encodedBus);
+  const overlay = document.getElementById('detailOverlay');
+  const content = document.getElementById('detailContent');
+  content.innerHTML = '<div class="loading">Loading…</div>';
+  overlay.classList.add('show');
+  try{
+    const participants = await apiGet('busParticipants', {bus});
+    content.innerHTML = `
+      <h2>Bus ${escapeHtml(bus)}</h2>
+      <div class="card">
+        ${participants.length ? participants.map(p =>
+          `<div class="row"><span style="font-size:13px;">${p.boarded ? '✅' : '❌'} ${escapeHtml(p.name)}</span></div>`
+        ).join('') : '<div class="empty">No participants on this bus.</div>'}
+      </div>`;
+  }catch(e){
+    content.innerHTML = '<div class="error-msg">Could not load bus participants.</div>';
+  }
+}
+
+async function resetAirportBoarding(){
+  if(!confirm('Reset airport boarding status for ALL participants? This cannot be undone.')) return;
+  try{
+    await apiPost({ action:'resetAirportBoarding' });
+    toast('Airport boarding reset');
+    renderTransportDashboard();
+  }catch(e){
+    toast('Reset failed — check your connection');
+  }
+}
+
+async function resetCoorgBoarding(){
+  if(!confirm('Reset Coorg boarding status for ALL participants? This cannot be undone.')) return;
+  try{
+    await apiPost({ action:'resetCoorgBoarding' });
+    toast('Coorg boarding reset');
+    renderTransportDashboard();
+  }catch(e){
+    toast('Reset failed — check your connection');
+  }
 }
 
 function renderParticipantDirectory(){
@@ -1111,6 +1386,12 @@ let deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', (e)=>{
   e.preventDefault();
   deferredInstallPrompt = e;
+  renderInstallCard();
+});
+window.addEventListener('appinstalled', ()=>{
+  deferredInstallPrompt = null;
+  const card = document.getElementById('installAppCard');
+  if(card) card.style.display = 'none';
 });
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
