@@ -1402,7 +1402,13 @@ if('serviceWorker' in navigator){
 /* ---------- boot ---------- */
 if(typeof OneSignalDeferred === 'undefined'){ window.OneSignalDeferred = []; }
 OneSignalDeferred.push(async function(OneSignal){
-  try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID }); }catch(e){ console.error('OneSignal init failed', e); }
+  try{ await OneSignal.init({ appId: ONESIGNAL_APP_ID, 
+                              serviceWorkerPath: "OneSignalSDKWorker.js",
+                              serviceWorkerUpdaterPath: "OneSignalSDKUpdaterWorker.js",
+                              serviceWorkerParam: {
+                              scope: "/flit-2026-app/"
+                              }
+                            }); }catch(e){ console.error('OneSignal init failed', e); }
 });
 (async function(){
   await loadCache();
