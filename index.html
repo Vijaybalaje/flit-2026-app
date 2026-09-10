@@ -262,6 +262,10 @@
             <button class="btn secondary" id="coorgNotBoardedBtn" onclick="setCoorgBoarded(false)">Not Yet</button>
           </div>
         </div>
+        <div class="card">
+          <h3>Need help with travel?</h3>
+          <button class="btn secondary block" onclick="raiseTravelIssue()">Raise Travel Issue</button>
+        </div>
       </div>
 
       <div id="travel-hotel" style="display:none">
@@ -279,6 +283,10 @@
             <button class="btn" id="hotelCheckedInBtn" onclick="setHotelCheckin(true)">Checked in</button>
             <button class="btn secondary" id="hotelNotCheckedInBtn" onclick="setHotelCheckin(false)">Not Yet</button>
           </div>
+        </div>
+        <div class="card">
+          <h3>Need help with your room?</h3>
+          <button class="btn secondary block" onclick="raiseHotelIssue()">Raise Hotel Issue</button>
         </div>
       </div>
     </section>
@@ -551,13 +559,18 @@ document.querySelectorAll('.tabbar button').forEach(b=>b.addEventListener('click
 function boot(){
   const savedAttendee = localStorage.getItem('flit_attendee');
   isOrganizer = localStorage.getItem('flit_isOrganizer') === 'true';
-
+  
   if(savedAttendee){
     const a = JSON.parse(savedAttendee);
     currentPersona = a.name;
     currentEmail = a.email || null;
     enterApp();
     if(isOrganizer){
+      if(typeof OneSignalDeferred !== 'undefined'){
+        OneSignalDeferred.push(async function(OneSignal){
+        try{ await OneSignal.User.addTag('role','organizer'); }catch(e){}
+        });
+      }
       document.getElementById('adminTabBtn').style.display = 'flex';
       document.getElementById('viewSwitchBtn').style.display = 'inline-flex';
     }
@@ -569,6 +582,11 @@ function boot(){
     // organizer who hasn't registered as an attendee yet — allowed, but
     // currentPersona falls back to a synthetic organizer identity rather
     // than ever becoming "Admin".
+    if(typeof OneSignalDeferred !== 'undefined'){
+      OneSignalDeferred.push(async function(OneSignal){
+        try{ await OneSignal.User.addTag('role','organizer'); }catch(e){}
+      });
+    }
     currentPersona = localStorage.getItem('flit_organizer_name') || 'Organizer';
     enterApp();
     document.getElementById('adminTabBtn').style.display = 'flex';
@@ -649,6 +667,11 @@ async function organizerLogin(){
 
   isOrganizer = true;
   localStorage.setItem('flit_isOrganizer','true');
+  if(typeof OneSignalDeferred !== 'undefined'){
+    OneSignalDeferred.push(async function(OneSignal){
+      try{ await OneSignal.User.addTag('role','organizer'); }catch(e){}
+    });
+  }
   if(!currentPersona){
     currentPersona = email || 'Organizer';
     localStorage.setItem('flit_organizer_name', currentPersona);
@@ -1044,29 +1067,61 @@ function renderHotelCheckinUI_(hotelState){
   setActiveButtonPair_('hotelCheckedInBtn','hotelNotCheckedInBtn', hotelState.checkedIn === true ? true : (hotelState.checkedIn === false ? false : null));
 }
 
-async function setAirportBoarded(val){
-  const travel = (await sget(k('travel'))) || {};
-  travel.airportBoarded = val;
-  await sset(k('travel'), travel);
-  const travelRow = findMineByNameOrEmail_(window.appCache.travel || []);
-  renderAirportBoardingUI_(travelRow, travel);
-  toast(val ? 'Marked as boarded' : 'Marked as not yet boarded');
-}
-async function setCoorgBoarded(val){
-  const travel = (await sget(k('travel'))) || {};
-  travel.coorgBoarded = val;
-  await sset(k('travel'), travel);
-  renderCoorgBoardingUI_(travel);
-  toast(val ? 'Marked as boarded' : 'Marked as not yet boarded');
-}
-async function setHotelCheckin(val){
-  const hotel = (await sget(k('hotel'))) || {};
-  hotel.checkedIn = val;
-  await sset(k('hotel'), hotel);
-  renderHotelCheckinUI_(hotel);
-  toast(val ? 'Hotel check-in confirmed' : 'Updated');
+const _pendingActions = {};
+async function runBoardingAction_(actionKey, primaryBtnId, secondaryBtnId, work){
+  if(_pendingActions[actionKey]) return;
+  _pendingActions[actionKey] = true;
+  const primaryBtn = document.getElementById(primaryBtnId);
+  const secondaryBtn = document.getElementById(secondaryBtnId);
+  const originalLabel = primaryBtn.textContent;
+  primaryBtn.disabled = true; secondaryBtn.disabled = true;
+  primaryBtn.textContent = 'Updating…';
+  try{
+    await work();
+    primaryBtn.textContent = 'Saved ✓';
+    setTimeout(()=>{ primaryBtn.textContent = originalLabel; }, 1200);
+  }catch(e){
+    primaryBtn.textContent = originalLabel;
+    toast('Could not save — check your connection');
+  }finally{
+    primaryBtn.disabled = false; secondaryBtn.disabled = false;
+    _pendingActions[actionKey] = false;
+  }
 }
 
+async function setAirportBoarded(val){
+  await runBoardingAction_('airportBoarded',
+    val ? 'airportBoardedBtn' : 'airportNotBoardedBtn',
+    val ? 'airportNotBoardedBtn' : 'airportBoardedBtn',
+    async () => {
+      const travel = (await sget(k('travel'))) || {};
+      travel.airportBoarded = val;
+      await sset(k('travel'), travel);
+      renderAirportBoardingUI_(findMineByNameOrEmail_(window.appCache.travel || []), travel);
+    });
+}
+async function setCoorgBoarded(val){
+  await runBoardingAction_('coorgBoarded',
+    val ? 'coorgBoardedBtn' : 'coorgNotBoardedBtn',
+    val ? 'coorgNotBoardedBtn' : 'coorgBoardedBtn',
+    async () => {
+      const travel = (await sget(k('travel'))) || {};
+      travel.coorgBoarded = val;
+      await sset(k('travel'), travel);
+      renderCoorgBoardingUI_(travel);
+    });
+}
+async function setHotelCheckin(val){
+  await runBoardingAction_('hotelCheckin',
+    val ? 'hotelCheckedInBtn' : 'hotelNotCheckedInBtn',
+    val ? 'hotelNotCheckedInBtn' : 'hotelCheckedInBtn',
+    async () => {
+      const hotel = (await sget(k('hotel'))) || {};
+      hotel.checkedIn = val;
+      await sset(k('hotel'), hotel);
+      renderHotelCheckinUI_(hotel);
+    });
+}
 /* ================= ENGAGE ================= */
 document.getElementById('engageSubnav').addEventListener('click', e=>{
   const btn = e.target.closest('button'); if(!btn) return;
@@ -1165,23 +1220,51 @@ async function renderHelp(){
   ).join('') : '<div class="empty">No requests yet.</div>';
   updateHelpBadge();
 }
+async function raiseTravelIssue(){
+  const message = prompt('Describe the travel issue:');
+  if(!message || !message.trim()) return;
+  const travel = findMineByNameOrEmail_(window.appCache.travel || []) || {};
+  try{
+    await apiPost({ action:'raiseHelpRequest', persona: currentPersona, email: currentEmail || '',
+      issueType:'Travel', message: message.trim(), busNumber: travel.busNo || '' });
+    toast('Travel issue sent to the organizing team');
+    renderHelp();
+  }catch(e){ toast('Could not send — check your connection'); }
+}
+  
+async function raiseHotelIssue(){
+  const message = prompt('Describe the hotel issue:');
+  if(!message || !message.trim()) return;
+  const hotel = findMineByNameOrEmail_(window.appCache.hotel || []) || {};
+  try{
+    await apiPost({ action:'raiseHelpRequest', persona: currentPersona, email: currentEmail || '',
+      issueType:'Hotel', message: message.trim(), roomNumber: hotel.roomNo || '' });
+    toast('Hotel issue sent to the organizing team');
+    renderHelp();
+  }catch(e){ toast('Could not send — check your connection'); }
+}
+
 async function submitHelp(){
   const msg = document.getElementById('helpMsg').value.trim();
   if(!msg) return;
-  const all = (await sget('helprequests')) || [];
-  all.push({persona:currentPersona, type:document.getElementById('helpType').value, message:msg, time:new Date().toLocaleTimeString(), resolved:false, sos:false});
-  await sset('helprequests', all);
-  document.getElementById('helpMsg').value='';
-  renderHelp();
-  toast('Request sent to the organizing team');
+  try{
+    await apiPost({ action:'raiseHelpRequest', persona: currentPersona, email: currentEmail || '',
+      issueType: document.getElementById('helpType').value, message: msg });
+    document.getElementById('helpMsg').value='';
+    renderHelp();
+    toast('Request sent to the organizing team');
+  }catch(e){ toast('Could not send — check your connection'); }
 }
+  
 async function sendSOS(){
-  const all = (await sget('helprequests')) || [];
-  all.push({persona:currentPersona, type:'SOS', message:'Immediate assistance requested', time:new Date().toLocaleTimeString(), resolved:false, sos:true});
-  await sset('helprequests', all);
-  renderHelp();
-  toast('SOS sent — the team has been alerted');
+  try{
+    await apiPost({ action:'raiseHelpRequest', persona: currentPersona, email: currentEmail || '',
+      issueType:'SOS', message:'Immediate assistance requested', sos:true });
+    renderHelp();
+    toast('SOS sent — the team has been alerted');
+  }catch(e){ toast('Could not send — check your connection'); }
 }
+  
 async function updateHelpBadge(){
   const all = (await sget('helprequests')) || [];
   const mineOpen = all.filter(h=>h.persona===currentPersona && !h.resolved).length;
