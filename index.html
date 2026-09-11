@@ -144,17 +144,14 @@
     <h1 class="page-title">Welcome — let's get you registered</h1>
     <p class="page-sub">This is a one-time step. Your details are saved and can't be edited after — if something's wrong, reach the help desk in the app once you're in.</p>
     <div class="card">
-      <label>Name</label><input id="gName" placeholder="Full name">
-      <label>Email</label><input id="gEmail" placeholder="you@company.com">
-      <label>Contact number</label><input id="gContact" placeholder="+91...">
-      <label>Country</label><input id="gCountry" placeholder="India">
-      <label>Flight time</label><input id="gFlight" placeholder="e.g. 4 Nov, 10:40 AM">
+      <label>Name</label><input id="gName" placeholder="">
+      <label>Email</label><input id="gEmail" placeholder="">
+      <label>Contact number</label><input id="gContact" placeholder="">
+      <label>Country</label><input id="gCountry" placeholder="">
       <label>Dietary preference</label>
       <select class="field" id="gDietary">
-        <option>No preference</option><option>Vegetarian</option><option>Vegan</option><option>Jain</option><option>Non-vegetarian</option><option>Other / allergy</option>
+        <option>No preference</option><option>Vegetarian</option><option>Vegan</option><option>Non-vegetarian</option>
       </select>
-      <label>Arrival details</label><input id="gArrival" placeholder="Date, mode, terminal">
-      <label>Departure details</label><input id="gDeparture" placeholder="Date, mode, terminal">
       <button class="btn block" onclick="completeRegistration()">Register &amp; continue</button>
       <p id="gateError" style="color:var(--coral); font-size:12px; margin-top:8px;"></p>
     </div>
@@ -622,10 +619,7 @@ async function completeRegistration(){
     email: document.getElementById('gEmail').value.trim(),
     contact: document.getElementById('gContact').value.trim(),
     country: document.getElementById('gCountry').value.trim(),
-    flight: document.getElementById('gFlight').value.trim(),
-    dietary: document.getElementById('gDietary').value,
-    arrival: document.getElementById('gArrival').value.trim(),
-    departure: document.getElementById('gDeparture').value.trim(),
+    dietary: document.getElementById('gDietary').value
   };
   if(!reg.name || !reg.email){
     document.getElementById('gateError').textContent = 'Name and email are required.';
@@ -969,11 +963,8 @@ async function renderTravelFromCache(){
     <div class="row"><span style="font-size:12.5px;color:var(--muted)">Email</span><span style="font-size:12.5px">${escapeHtml(reg.email||'—')}</span></div>
     <div class="row"><span style="font-size:12.5px;color:var(--muted)">Contact</span><span style="font-size:12.5px">${escapeHtml(reg.contact||'—')}</span></div>
     <div class="row"><span style="font-size:12.5px;color:var(--muted)">Country</span><span style="font-size:12.5px">${escapeHtml(reg.country||'—')}</span></div>
-    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Flight</span><span style="font-size:12.5px">${escapeHtml(reg.flight||'—')}</span></div>
-    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Dietary</span><span style="font-size:12.5px">${escapeHtml(reg.dietary||'—')}</span></div>
-    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Arrival</span><span style="font-size:12.5px">${escapeHtml(reg.arrival||'—')}</span></div>
-    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Departure</span><span style="font-size:12.5px">${escapeHtml(reg.departure||'—')}</span></div>`;
-
+    <div class="row"><span style="font-size:12.5px;color:var(--muted)">Dietary</span><span style="font-size:12.5px">${escapeHtml(reg.dietary||'—')}</span></div>;
+    
   // ---- travel (airport pickup + bus) ----
   const travel = findMineByNameOrEmail_(window.appCache.travel || []);
   const travelState = (await sget(k('travel'))) || {};
