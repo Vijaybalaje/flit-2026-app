@@ -308,6 +308,8 @@
       <div id="engage-ask" style="display:none">
         <div class="card">
           <h3>Ask a question</h3>
+          <label>Session</label>
+          <select class = "field" id="askSession"></select>
           <textarea id="askInput" placeholder="What would you like to ask leadership?"></textarea>
           <button class="btn block" onclick="submitQuestion()">Submit question</button>
         </div>
@@ -1163,21 +1165,36 @@ async function vote(pollId, idx){
   toast('Vote recorded');
 }
 
+function populateAskSessionDropdown_(){
+  const sel = document.getElementById('askSession');
+  if(!sel) return;
+  const sessions = (window.appCache.schedule || [])
+    .map(s => s.title).filter((v,i,a)=> v && a.indexOf(v)===i);
+  sel.innerHTML = sessions.length
+    ? sessions.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('')
+    : '<option value="">General</option>';
+}
+
 async function renderAsk(){
-  const qs = (await sget('questions')) || [];
+  populateAskSessionDropdown_();
+  const qs = await apiGet('questions').catch(()=>[]);
   document.getElementById('askList').innerHTML = qs.length ? qs.slice().reverse().map(q=>
-    `<div class="row" style="align-items:flex-start"><span style="font-size:12.5px">${escapeHtml(q.text)}</span><span class="tag">${escapeHtml((q.persona||'').split(' ')[0])}</span></div>`
+    `<div class="row" style="align-items:flex-start">
+       <span style="font-size:12.5px">${escapeHtml(q.text)}${q.session?` <span class="tag">${escapeHtml(q.session)}</span>`:''}</span>
+       <span class="tag">${escapeHtml((q.name||'').split(' ')[0])}</span>
+     </div>`
   ).join('') : '<div class="empty">No questions yet — be the first.</div>';
 }
 async function submitQuestion(){
   const val = document.getElementById('askInput').value.trim();
   if(!val) return;
-  const qs = (await sget('questions')) || [];
-  qs.push({text:val, persona:currentPersona, time:new Date().toLocaleTimeString()});
-  await sset('questions', qs);
-  document.getElementById('askInput').value='';
-  renderAsk();
-  toast('Question submitted');
+  const session = document.getElementById('askSession').value || '';
+  try{
+    await apiPost({ action:'submitQuestion', name: currentPersona, email: currentEmail || '', session, question: val });
+    document.getElementById('askInput').value='';
+    renderAsk();
+    toast('Question submitted');
+  }catch(e){ toast('Could not submit — check your connection'); }
 }
 
 async function renderWall(){
@@ -1198,17 +1215,14 @@ async function postWall(){
 }
 
 async function submitSurvey(){
-  const s = {
-    persona: currentPersona,
-    rating: document.getElementById('surveyRating').value,
-    good: document.getElementById('surveyGood').value,
-    improve: document.getElementById('surveyImprove').value,
-  };
-  const all = (await sget('survey')) || [];
-  all.push(s);
-  await sset('survey', all);
-  document.getElementById('surveyDone').textContent = 'Thanks — your feedback was recorded.';
-  toast('Survey submitted');
+  const rating = document.getElementById('surveyRating').value;
+  const good = document.getElementById('surveyGood').value;
+  const improve = document.getElementById('surveyImprove').value;
+  try{
+    await apiPost({ action:'submitSurvey', name: currentPersona, email: currentEmail || '', rating, good, improve });
+    document.getElementById('surveyDone').textContent = 'Thanks — your feedback was recorded.';
+    toast('Survey submitted');
+  }catch(e){ toast('Could not submit — check your connection'); }
 }
 
 /* ================= HELP ================= */
