@@ -459,13 +459,9 @@ window.appCache = {
   notifications: [],
   participants: [],
   dashboardSummary: {},
+  polls: [],
   ts: {}
 };
-
-const POLLS = [
-  {id:"p1", q:"Which theme resonates most with your team right now?", options:["Elevate","Rise","Transform","Lead"]},
-  {id:"p2", q:"Favorite session format?", options:["Keynote","Panel","Workshop","Fireside chat"]},
-];
 
 /* ---------------- low-level API helpers ---------------- */
 async function apiGet(action, params){
@@ -518,7 +514,8 @@ async function loadCache(){
     apiGet('travel').catch(()=>[]),
     sget('notifications'),
     apiGet('participants').catch(()=>[]),
-    apiGet('dashboardSummary').catch(()=>({}))
+    apiGet('dashboardSummary').catch(()=>({})),
+    apiGet('polls').catch(()=>[])
   ]);
   window.appCache.schedule = Array.isArray(results[0]) ? results[0] : [];
   window.appCache.hotel = Array.isArray(results[1]) ? results[1] : [];
@@ -526,6 +523,7 @@ async function loadCache(){
   window.appCache.notifications = results[3] || [];
   window.appCache.participants = Array.isArray(results[4]) ? results[4] : [];
   window.appCache.dashboardSummary = results[5] || {};
+  window.appCache.polls = Array.isArray(results[6]) ? results[6] : [];
   window.appCache.ts.all = Date.now();
 }
 
@@ -1137,36 +1135,40 @@ document.getElementById('engageSubnav').addEventListener('click', e=>{
 });
 async function renderEngage(){ await renderPolls(); }
 
+// NEW
 async function renderPolls(){
   const votes = (await sget(k('pollvotes'))) || {};
-  const allVotes = (await sget('pollvotes_all')) || {};
-  document.getElementById('engage-polls').innerHTML = POLLS.map(p=>{
-    const counts = allVotes[p.id] || {};
+  const summary = await apiGet('pollSummary').catch(()=>({}));
+  const polls = window.appCache.polls || [];
+  document.getElementById('engage-polls').innerHTML = polls.length ? polls.map(p=>{
+    const counts = summary[p.id] || {};
     const total = Object.values(counts).reduce((a,b)=>a+b,0) || 0;
     const myVote = votes[p.id];
-    const opts = p.options.map((o,i)=>{
-      const c = counts[i]||0;
+    const opts = p.options.map(o=>{
+      const c = counts[o]||0;
       const pct = total ? Math.round(c/total*100) : 0;
-      return `<div class="poll-opt-row" style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer;" onclick="vote('${p.id}',${i})">
+      const safeOpt = escapeHtml(o).replace(/'/g,"\\'");
+      return `<div class="poll-opt-row" style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer;" onclick="vote('${p.id}','${safeOpt}')">
         <div style="display:flex; justify-content:space-between; font-size:13px;"><span>${escapeHtml(o)}</span><span>${myVote!==undefined?pct+'%':''}</span></div>
       </div>`;
     }).join('');
-    return `<div class="card"><h3>${escapeHtml(p.q)}</h3>${opts}</div>`;
-  }).join('');
+    return `<div class="card"><h3>${escapeHtml(p.question)}</h3>${opts}</div>`;
+  }).join('') : '<div class="empty">No polls available right now.</div>';
 }
-async function vote(pollId, idx){
+  
+async function vote(pollId, option){
   const votes = (await sget(k('pollvotes'))) || {};
-  const allVotes = (await sget('pollvotes_all')) || {};
   if(votes[pollId] !== undefined) { toast('You already voted'); return; }
-  votes[pollId] = idx;
-  allVotes[pollId] = allVotes[pollId] || {};
-  allVotes[pollId][idx] = (allVotes[pollId][idx]||0) + 1;
-  await sset(k('pollvotes'), votes);
-  await sset('pollvotes_all', allVotes);
-  renderPolls();
-  toast('Vote recorded');
+  try{
+    await apiPost({ action:'submitPollResponse', name: currentPersona, email: currentEmail || '', pollId, response: option });
+    votes[pollId] = option;
+    await sset(k('pollvotes'), votes);
+    renderPolls();
+    toast('Vote recorded');
+  }catch(e){
+    toast('Could not record vote — check your connection');
+  }
 }
-
 function populateAskSessionDropdown_(){
   const sel = document.getElementById('askSession');
   if(!sel) return;
