@@ -600,6 +600,7 @@ function boot(){
   document.getElementById('gate').style.display = 'block';
 }
 
+// NEW
 function enterApp(){
   document.getElementById('gate').style.display = 'none';
   document.getElementById('mainApp').style.display = 'block';
@@ -607,6 +608,7 @@ function enterApp(){
   if(typeof OneSignalDeferred !== 'undefined'){
     OneSignalDeferred.push(async function(OneSignal){
       try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
+      try{ await OneSignal.User.addTag('persona', currentPersona); }catch(e){}   // ADD
     });
   }
 }
@@ -1305,10 +1307,10 @@ async function renderAdmin(){
   document.getElementById('admRecentReg').innerHTML = recentReg.length ? recentReg.map(r=>
     `<div class="row"><span style="font-size:12.5px">${escapeHtml(r.name)}</span><span class="tag">${escapeHtml(r.email||'')}</span></div>`
   ).join('') : '<div class="empty">Nothing yet.</div>';
-
+  
   const notifHist = summary.recentNotifications || [];
   document.getElementById('admNotifHistory').innerHTML = notifHist.length ? notifHist.map(n=>
-    `<div class="row"><span style="font-size:12.5px">${escapeHtml(n.text)}</span><span class="tag">${n.time||''}</span></div>`
+    `<div class="row"><span style="font-size:12.5px">${escapeHtml(n.text)} <span class="tag">by ${escapeHtml(n.sentBy||'Organizer')}</span></span><span class="tag">${n.time||''}</span></div>`
   ).join('') : '<div class="empty">Nothing sent yet.</div>';
 
   renderParticipantDirectory();
@@ -1453,12 +1455,15 @@ function closeParticipantDetail(){
 }
 
 async function resolveHelp(idx){
-  const all = (await sget('helprequests')) || [];
-  all[idx].resolved = !all[idx].resolved;
-  all[idx].resolvedAt = all[idx].resolved ? new Date().toISOString() : null;
-  await sset('helprequests', all);
-  renderAdmin();
+  try{
+    await apiPost({ action:'resolveHelpRequest', idx, resolvedBy: currentPersona || 'Organizer' });
+    await loadCache();
+    renderAdmin();
+  }catch(e){
+    toast('Could not update — check your connection');
+  }
 }
+  
 async function removeWall(idx){
   const all = (await sget('memorywall')) || [];
   all.splice(idx,1);
@@ -1469,7 +1474,7 @@ async function pushNotification(){
   const text = document.getElementById('admNotifText').value.trim();
   if(!text) return;
   const all = (await sget('notifications')) || [];
-  all.push({text, time:new Date().toLocaleTimeString()});
+  all.push({text, time:new Date().toLocaleTimeString(), sentBy: currentPersona || 'Organizer'});
   await sset('notifications', all);       // in-app banner, shown when the app is open
   await sendPushToAll(text);              // real phone push via OneSignal + audit log (works app-closed too)
   document.getElementById('admNotifText').value='';
