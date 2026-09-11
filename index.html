@@ -448,8 +448,9 @@ let currentEmail = null;
 let isOrganizer = false;     // additive flag; does not replace currentPersona
 let organizerViewActive = false;
 
-const HOME_REFRESH_MS = 60 * 1000;
-const BG_REFRESH_MS = 3 * 60 * 1000;
+const HOME_REFRESH_MS = 30 * 1000;
+const BG_REFRESH_MS = 30 * 1000;
+const POLL_REFRESH_MS = 8 * 1000  
 
 /* ---------------- local cache (window.appCache) ---------------- */
 window.appCache = {
@@ -538,6 +539,10 @@ async function backgroundRefresh(){
     if(id==='travel') renderTravelFromCache();
     if(id==='home') renderHome();
     if(id==='admin' && isOrganizer) renderAdmin();
+    if(id==='engage'){                                                    // ADD
+      const activeSub = document.querySelector('#engageSubnav button.active');
+      if(!activeSub || activeSub.dataset.e === 'polls') renderPolls();    // ADD
+    }
   }catch(e){ console.error('backgroundRefresh failed', e); }
 }
 
@@ -1169,6 +1174,15 @@ async function vote(pollId, option){
     toast('Could not record vote — check your connection');
   }
 }
+
+async function pollLiveRefresh(){
+  const active = document.querySelector('.screen.active');
+  if(!active || active.id !== 'screen-engage') return;
+  const activeSub = document.querySelector('#engageSubnav button.active');
+  if(!activeSub || activeSub.dataset.e !== 'polls') return;
+  try{ await renderPolls(); }catch(e){ /* silent — background poll refresh */ }
+}
+  
 function populateAskSessionDropdown_(){
   const sel = document.getElementById('askSession');
   if(!sel) return;
@@ -1520,6 +1534,7 @@ OneSignalDeferred.push(async function(OneSignal){
 
   setInterval(renderHome, HOME_REFRESH_MS);
   setInterval(backgroundRefresh, BG_REFRESH_MS);
+  setInterval(pollLiveRefresh, POLL_REFRESH_MS);
 })();
 
 </script>
