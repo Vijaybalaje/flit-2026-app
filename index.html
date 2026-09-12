@@ -429,6 +429,40 @@
       <div id="detailContent"></div>
     </div>
   </div>
+
+  <!-- Resolution Notes modal (Admin: resolving a help/SOS request) -->
+  <div class="detail-overlay" id="resolveModalOverlay">
+    <div class="detail-sheet">
+      <h2>Resolution Notes</h2>
+      <p class="page-sub">Required — this note is sent directly to the person who raised the request.</p>
+      <textarea id="resolveNotesInput" style="min-height:100px;" placeholder="e.g. Bus 3 is waiting at Gate 4. Driver: Rajesh. Contact: 9876543210"></textarea>
+      <p id="resolveModalError" style="color:var(--coral); font-size:12px; margin:-6px 0 10px;"></p>
+      <div class="grid2">
+        <button class="btn secondary" onclick="closeResolveModal()">Cancel</button>
+        <button class="btn" onclick="confirmResolve()">Mark Resolved &amp; Notify</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- iOS "add to home screen" guidance (first launch, iOS only, not already installed) -->
+  <div class="detail-overlay" id="iosInstallOverlay">
+    <div class="detail-sheet">
+      <h2>📱 Install FL!T on your iPhone</h2>
+      <p class="page-sub">To receive notifications, add FL!T to your Home Screen:</p>
+      <div class="card">
+        <p>
+          1. Tap <strong>Share</strong> (the square with an arrow up)<br>
+          2. Tap <strong>Add to Home Screen</strong><br>
+          3. Open <strong>FL!T</strong> from your Home Screen<br>
+          4. Enable Notifications when asked
+        </p>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <button class="btn secondary" onclick="dismissIOSInstallGuide(false)">Remind Me Later</button>
+        <button class="btn" onclick="dismissIOSInstallGuide(true)">Got It</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -610,6 +644,40 @@ function enterApp(){
       try{ await OneSignal.Notifications.requestPermission(); }catch(e){}
       try{ await OneSignal.User.addTag('persona', currentPersona); }catch(e){}   // ADD
     });
+  }
+  // Delayed so it doesn't stack on top of the native notification-permission prompt above.
+  setTimeout(maybeShowIOSInstallGuide, 900);
+}
+
+/* ---------------- iOS "Add to Home Screen" guidance ---------------- */
+// iOS Safari has no beforeinstallprompt event (that's the Android/Chrome-only
+// path the existing installAppCard/deferredInstallPrompt logic already covers).
+// This is a separate, additive path for iOS specifically — it does not touch
+// deferredInstallPrompt, installAppCard, or any existing install logic.
+function isIOSDevice_(){
+  const ua = navigator.userAgent;
+  const isIPhoneIPad = /iPad|iPhone|iPod/.test(ua);
+  const isIPadOS13Plus = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1; // iPadOS 13+ UA reports as Mac
+  return isIPhoneIPad || isIPadOS13Plus;
+}
+function isStandaloneMode_(){
+  return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+}
+function maybeShowIOSInstallGuide(){
+  if(!isIOSDevice_()) return;
+  if(isStandaloneMode_()) return; // already installed
+  if(localStorage.getItem('flit_ios_install_dismissed') === 'true') return; // "Got It" — never show again
+  if(sessionStorage.getItem('flit_ios_install_snoozed') === 'true') return; // "Remind Me Later" — not again this session
+  const overlay = document.getElementById('iosInstallOverlay');
+  if(overlay) overlay.classList.add('show');
+}
+function dismissIOSInstallGuide(permanent){
+  const overlay = document.getElementById('iosInstallOverlay');
+  if(overlay) overlay.classList.remove('show');
+  if(permanent){
+    localStorage.setItem('flit_ios_install_dismissed', 'true');
+  } else {
+    sessionStorage.setItem('flit_ios_install_snoozed', 'true');
   }
 }
 
@@ -1144,8 +1212,14 @@ async function renderPolls(){
       const c = counts[o]||0;
       const pct = total ? Math.round(c/total*100) : 0;
       const safeOpt = escapeHtml(o).replace(/'/g,"\\'");
-      return `<div class="poll-opt-row" style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer;" onclick="vote('${p.id}','${safeOpt}')">
-        <div style="display:flex; justify-content:space-between; font-size:13px;"><span>${escapeHtml(o)}</span><span>${myVote!==undefined?pct+'%':''}</span></div>
+      const isMine = myVote !== undefined && o === myVote;
+      const borderStyle = isMine ? 'border:1px solid var(--lime);' : 'border:1px solid var(--border);';
+      const bgStyle = isMine ? 'background:rgba(201,255,61,.10);' : '';
+      return `<div class="poll-opt-row" style="${borderStyle} ${bgStyle} border-radius:10px; padding:10px 12px; margin-bottom:8px; cursor:pointer;" onclick="vote('${p.id}','${safeOpt}')">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+          <span>${isMine ? '<span class="tag ok" style="margin-right:6px;">Your Vote</span>' : ''}${escapeHtml(o)}</span>
+          <span>${myVote!==undefined?pct+'%':''}</span>
+        </div>
       </div>`;
     }).join('');
     return `<div class="card"><h3>${escapeHtml(p.question)}</h3>${opts}</div>`;
@@ -1461,9 +1535,47 @@ function closeParticipantDetail(){
   document.getElementById('detailOverlay').classList.remove('show');
 }
 
+let _resolvingIdx = null;
+
+// Entry point — unchanged signature, still called from the admin list's
+// "Resolve"/"Reopen" button exactly as before. Resolving now requires
+// mandatory notes via a modal; reopening (un-resolving) is unchanged.
 async function resolveHelp(idx){
+  const all = (await sget('helprequests')) || [];
+  const entry = all[idx];
+  if(!entry) return;
+
+  if(entry.resolved){
+    // Reopen — same one-step toggle as before, no notes required.
+    await doResolveToggle(idx, '');
+    return;
+  }
+
+  _resolvingIdx = idx;
+  document.getElementById('resolveNotesInput').value = '';
+  document.getElementById('resolveModalError').textContent = '';
+  document.getElementById('resolveModalOverlay').classList.add('show');
+}
+
+function closeResolveModal(){
+  document.getElementById('resolveModalOverlay').classList.remove('show');
+  _resolvingIdx = null;
+}
+
+async function confirmResolve(){
+  const notes = document.getElementById('resolveNotesInput').value.trim();
+  if(!notes){
+    document.getElementById('resolveModalError').textContent = 'Resolution notes are required.';
+    return;
+  }
+  const idx = _resolvingIdx;
+  closeResolveModal();
+  await doResolveToggle(idx, notes);
+}
+
+async function doResolveToggle(idx, resolutionNotes){
   try{
-    await apiPost({ action:'resolveHelpRequest', idx, resolvedBy: currentPersona || 'Organizer' });
+    await apiPost({ action:'resolveHelpRequest', idx, resolvedBy: currentPersona || 'Organizer', resolutionNotes });
     await loadCache();
     renderAdmin();
   }catch(e){
